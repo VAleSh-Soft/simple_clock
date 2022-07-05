@@ -22,7 +22,6 @@ enum AlarmState : uint8_t // состояние будильника
 class Alarm
 {
 private:
-  byte buzzer_pin;
   byte led_pin;
   uint16_t eeprom_index;
   AlarmState state;
@@ -70,9 +69,8 @@ private:
   }
 
 public:
-  Alarm(byte _buzzer_pin, byte _led_pin, uint16_t _eeprom_index)
+  Alarm(byte _led_pin, uint16_t _eeprom_index)
   {
-    buzzer_pin = _buzzer_pin;
     led_pin = _led_pin;
     pinMode(led_pin, OUTPUT);
     eeprom_index = _eeprom_index;

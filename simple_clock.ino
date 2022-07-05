@@ -27,7 +27,7 @@ DisplayTM1637 disp(DISPLAY_CLK_PIN, DISPLAY_DAT_PIN);
 DS3231 clock; // SDA - A4, SCL - A5
 RTClib RTC;
 #ifdef USE_ALARM
-Alarm alarm(BUZZER_PIN, ALARM_LED_PIN, ALARM_EEPROM_INDEX);
+Alarm alarm(ALARM_LED_PIN, ALARM_EEPROM_INDEX);
 #endif
 #ifdef USE_DS18B20
 OneWire ds(DS18B20_PIN); // вход датчика DS18b20
