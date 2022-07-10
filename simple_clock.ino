@@ -8,7 +8,7 @@
 #include "alarm.h"
 #endif
 #ifdef USE_DS18B20
-#include <OneWire.h> // https://github.com/PaulStoffregen/OneWire
+#include "ds1820.h"
 #endif
 
 // ==== настройки ====================================
@@ -30,9 +30,7 @@ RTClib RTC;
 Alarm alarm(ALARM_LED_PIN, ALARM_EEPROM_INDEX);
 #endif
 #ifdef USE_DS18B20
-OneWire ds(DS18B20_PIN); // вход датчика DS18b20
-byte addr[8];            // адрес датчика температуры
-int temperature;
+DS1820 ds(DS18B20_PIN); // вход датчика DS18b20
 #endif
 
 DateTime curTime;
@@ -229,7 +227,7 @@ void checkUpDownButton()
     // опрашивается исключительно чтобы срабатывала на отключение сигнала будильника
     btnDown.getButtonState();
 #endif
-   break;
+    break;
   case DISPLAY_MODE_SET_HOUR:
   case DISPLAY_MODE_SET_MINUTE:
 #ifdef USE_ALARM
@@ -448,17 +446,7 @@ void showTimeSetting()
 #ifdef USE_DS18B20
 void checkDS18b20()
 {
-  int temp;
-  ds.reset();
-  ds.select(addr);
-  ds.write(0xBE);                      // Считывание значения с датчика
-  temp = (ds.read() | ds.read() << 8); // Принимаем два байта температуры
-  temperature = round((float)temp / 16.0);
-
-  // даем команду на конвертацию для следующего запроса
-  ds.reset();
-  ds.write(0xCC); // Обращение ко всем датчикам
-  ds.write(0x44); // Команда на конвертацию
+  ds.readTemp();
 }
 #endif
 
@@ -472,7 +460,7 @@ void showTemp()
   }
 
 #ifdef USE_DS18B20
-  disp.showTemp(temperature);
+  disp.showTemp(ds.getTemp());
 #else
   disp.showTemp(int(clock.getTemperature()));
 #endif
@@ -667,14 +655,6 @@ void setup()
   btnUp.setIntervalOfSerial(100);
   btnDown.setLongClickMode(LCM_CLICKSERIES);
   btnDown.setIntervalOfSerial(100);
-
-#ifdef USE_DS18B20
-  // ==== датчик DS18b20 ===============================
-  ds.reset();     // сброс шины
-  ds.write(0x7F); // точность 0,5гр = 1F; 0,25гр = 3F; 0,125гр = 5F; 0,0625гр = 7F;
-  ds.search(addr);
-  checkDS18b20();
-#endif
 
   // ==== задачи =======================================
   byte task_count = 5;
