@@ -1,3 +1,16 @@
+/* Небольшая библиотека для работы с датчиками температуры DS1820, DS18s20, DS18b20 или DS1822;
+   Работает только с одним датчиком, выдает температуру в градусах Цельсия в формате int16_t, имеет контроль наличия датчика на линии, в случае, если датчика нет, выдает -127 градусов.
+
+   Для работы требует наличие библиотеки OneWire.h - https://github.com/PaulStoffregen/OneWire
+
+   Методы библиотеки
+
+   DS1820 ds(data_pin) - конструктор, data_pin - пин, к которому подключен датчик (наличие резистора 4.7кОм между пином данных и VCC обязательно)
+
+   void readTemp() - опрос датчика; следует вызывать не чаще одного раза в секунду, а лучше реже, т.к. при слишком частом опросе микросхема датчика начинает вносить искажения в температуру за счет собственного разогрева; считанные данные помещаются в поле temp;
+
+   int16_t getTemp() - получение ранее считанной из дачика температуры;
+*/
 #pragma once
 #include <Arduino.h>
 #include <OneWire.h> // https://github.com/PaulStoffregen/OneWire
@@ -7,38 +20,51 @@
 class DS1820 : public OneWire
 {
 private:
-  int16_t temperature = ERROR_TEMP;
+  int16_t temp = ERROR_TEMP;
   byte *addr = NULL;
-  bool sensor_on = false;
   byte type_c = 10;
+
+  bool checkData(byte *data)
+  {
+    // проверка данных на валидность - сначала по контрольной сумме;
+    // в случае отсутствия датчика data[] заполняется нулями, поэтому
+    // проверка CRC ничего не даст - CRC суммы нулей равно нулю, а
+    // именно нуль будет записан в ячейке CRC массива data[] в этом
+    // случае; поэтому проверяем ячейку, в которой указано разрешение
+    // конвертации, оно нулю равняться не должно
+    bool result = OneWire::crc8(data, 8) == data[8];
+    if (result && data[8] == 0)
+    {
+      result = (!type_c && data[7] != 0x00) && (type_c && data[4] != 0x00);
+    }
+
+    return (result);
+  }
 
 public:
   DS1820(byte data_pin) : OneWire(data_pin)
   {
     addr = new byte[8];
     OneWire::reset();
-    sensor_on = OneWire::search(addr);
     // если датчик найден
-    if (sensor_on)
+    if (OneWire::search(addr))
     {
-      sensor_on = OneWire::crc8(addr, 7) == addr[7];
       // если адрес верифицирован
-      if (sensor_on)
+      if (OneWire::crc8(addr, 7) == addr[7])
       {
-        // опрееляем тип чипа
+        // определяем тип чипа
         switch (addr[0])
         {
-        case 0x10: // Chip = DS18S20 или old DS1820
+        case 0x10: // Chip = DS18S20 или старый DS1820
           type_c = 0;
           break;
-        case 0x28: // Chip = DS18B20"
+        case 0x28: // Chip = DS18B20
         case 0x22: // Chip = DS1822
           type_c = 1;
           break;
         }
-        sensor_on = type_c < 2;
       }
-      if (sensor_on)
+      if (type_c < 2)
       {
         OneWire::reset();
         OneWire::select(addr);
@@ -50,9 +76,10 @@ public:
   // считывание показаний датчика; вызывать не чаще одного раза в секунду
   void readTemp()
   {
-    if (sensor_on)
+    if (type_c < 2)
     {
       byte data[9];
+      // считывание данных из датчика
       OneWire::reset();
       OneWire::select(addr);
       OneWire::write(0xBE);
@@ -60,9 +87,10 @@ public:
       {
         data[i] = OneWire::read();
       }
-      if (OneWire::crc8(data, 8) != data[8])
+
+      if (!checkData(data))
       {
-        temperature = ERROR_TEMP;
+        temp = ERROR_TEMP;
       }
       else
       {
@@ -90,10 +118,11 @@ public:
             raw = raw & ~1; // разрешение 11 бит, 375 ms
           //// разрешение по умолчанию 12 бит, время преобразования 750 ms
         }
-        temperature = raw / 16;
+        temp = raw / 16;
+        // округляем остаток от деления
         if (raw % 16 >= 8)
         {
-          temperature++;
+          temp++;
         }
       }
 
@@ -104,5 +133,5 @@ public:
     }
   }
 
-  int16_t getTemp() { return (temperature); }
+  int16_t getTemp() { return (temp); }
 };

@@ -1,4 +1,4 @@
-# simple_clock v1.1
+# simple_clock v1.1.1
 Простые часы на модуле **DS3231** и семисегментном индикаторе с драйвером **TM1637**. Календаря нет. В базовом варианте (без будильника) помещается в **ATmega8**/**ATmega88**, но проверить работу на этих контроллерах возможности не было.
 
 Часы управляются тремя кнопками: **Set** - вход в режим настроек и сохранение изменений; **Up** - увеличение текущих значений; **Down** - уменьшение текущих значений.
@@ -46,8 +46,7 @@
 **shButton.h** - https://github.com/VAleSh-Soft/shButton <br>
 **shTaskManager.h** - https://github.com/VAleSh-Soft/shTaskManager <br>
 **DS3231.h** - https://github.com/NorthernWidget/DS3231 <br>
-**TM1637Display.h** - https://github.com/avishorp/TM1637
-
+**TM1637Display.h** - https://github.com/avishorp/TM1637 <br>
 
 для работы с датчиком DS18b20 используется библиотека
 
