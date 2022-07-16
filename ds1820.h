@@ -21,7 +21,7 @@ class DS1820 : public OneWire
 {
 private:
   int16_t temp = ERROR_TEMP;
-  byte *addr = NULL;
+  byte addr[8];
   byte type_c = 10;
 
   bool checkData(byte *data)
@@ -44,7 +44,6 @@ private:
 public:
   DS1820(byte data_pin) : OneWire(data_pin)
   {
-    addr = new byte[8];
     OneWire::reset();
     // если датчик найден
     if (OneWire::search(addr))
