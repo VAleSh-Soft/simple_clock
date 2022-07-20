@@ -6,13 +6,12 @@
 class DisplayTM1637 : public TM1637Display
 {
 private:
-  byte *data = NULL;
+  byte data[4];
   byte _brightness = 1;
 
 public:
   DisplayTM1637(uint8_t clk_pin, uint8_t dat_pin) : TM1637Display(clk_pin, dat_pin)
   {
-    data = new byte[4];
     clear();
   }
 
