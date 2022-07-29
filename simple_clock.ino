@@ -3,7 +3,11 @@
 #include <shButton.h>      // https://github.com/VAleSh-Soft/shButton
 #include <shTaskManager.h> // https://github.com/VAleSh-Soft/shTaskManager
 #include "header_file.h"
+#if defined(TM1637_DISPLAY)
 #include "display_TM1637.h"
+#elif defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
+#include "display_MAX72xx.h"
+#endif
 #ifdef USE_ALARM
 #include "alarm.h"
 #endif
@@ -23,7 +27,14 @@
 #define AUTO_EXIT_TIMEOUT 6      // время автоматического возврата в режим показа текущего времени из любых других режимов при отсутствии активности пользователя, секунд
 // ===================================================
 
+#if defined(TM1637_DISPLAY)
 DisplayTM1637 disp(DISPLAY_CLK_PIN, DISPLAY_DAT_PIN);
+#elif defined(MAX72XX_7SEGMENT_DISPLAY)
+DisplayMAX72xx7segment<DISPLAY_CS_PIN> disp;
+#elif defined(MAX72XX_MATRIX_DISPLAY)
+DisplayMAX72xxMatrix<DISPLAY_CS_PIN> disp;
+#endif
+
 DS3231 clock; // SDA - A4, SCL - A5
 RTClib RTC;
 #ifdef USE_ALARM
@@ -579,16 +590,38 @@ void showTimeData(byte hour, byte minute)
 #ifdef USE_ALARM
 void showAlarmState(byte _state)
 {
+#if defined(TM1637_DISPLAY)
   disp.setDispData(0, 0b01110111); // "A"
   disp.setDispData(1, 0b10111000); // "L:"
   disp.setDispData(2, 0x00);
+#elif defined(MAX72XX_7SEGMENT_DISPLAY)
+  disp.setDispData(0, 0b01110111); // "A"
+  disp.setDispData(1, 0b10001110); // "L:"
+  disp.setDispData(2, 0x00);
+#elif defined(MAX72XX_MATRIX_DISPLAY)
+  disp.setDispData(0, 0x0E); // "A"
+  disp.setDispData(1, 0x0F); // "L:"
+  disp.setDispData(2, 0x0A);
+  disp.setDispData(4, 0x01); // ":"
+#endif
+
   if (!blink_flag && !btnUp.isButtonClosed() && !btnDown.isButtonClosed())
   {
+#if defined(TM1637_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
     disp.setDispData(3, 0x00);
+#elif defined(MAX72XX_MATRIX_DISPLAY)
+    disp.setDispData(3, 0x0A);
+#endif
   }
   else
   {
+#if defined(TM1637_DISPLAY)
     disp.setDispData(3, (_state) ? 0b01011100 : 0b00001000);
+#elif defined(MAX72XX_7SEGMENT_DISPLAY)
+    disp.setDispData(3, (_state) ? 0b00011101 : 0b00001000);
+#elif defined(MAX72XX_MATRIX_DISPLAY)
+    disp.setDispData(3, (_state) ? 0x11 : 0x10);
+#endif
   }
 }
 #endif
@@ -655,6 +688,15 @@ void setup()
   btnUp.setIntervalOfSerial(100);
   btnDown.setLongClickMode(LCM_CLICKSERIES);
   btnDown.setIntervalOfSerial(100);
+
+// ==== экраны =======================================
+#if defined(MAX72XX_MATRIX_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
+  disp.shutdownAllDevices(false);
+#ifdef MAX72XX_MATRIX_DISPLAY
+  disp.setDirection(2);
+// disp.setFlip(true);
+#endif
+#endif
 
   // ==== задачи =======================================
   byte task_count = 5;
