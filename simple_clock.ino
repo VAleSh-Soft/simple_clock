@@ -11,8 +11,10 @@
 #ifdef USE_ALARM
 #include "alarm.h"
 #endif
-#ifdef USE_DS18B20
+#if defined(USE_DS18B20)
 #include "ds1820.h"
+#elif defined(USE_NTC)
+#include "ntc.h"
 #endif
 
 // ==== настройки ====================================
@@ -40,8 +42,10 @@ RTClib RTC;
 #ifdef USE_ALARM
 Alarm alarm(ALARM_LED_PIN, ALARM_EEPROM_INDEX);
 #endif
-#ifdef USE_DS18B20
+#if defined(USE_DS18B20)
 DS1820 ds(DS18B20_PIN); // вход датчика DS18b20
+#elif defined(USE_NTC)
+NTCSensor ntc(NTC_PIN, 10000, 9850, 3950);
 #endif
 
 DateTime curTime;
@@ -457,7 +461,7 @@ void showTimeSetting()
 #ifdef USE_DS18B20
 void checkDS18b20()
 {
-  ds.readTemp();
+  ds.readData();
 }
 #endif
 
@@ -470,8 +474,10 @@ void showTemp()
     tasks.startTask(show_temp_mode);
   }
 
-#ifdef USE_DS18B20
+#if defined(USE_DS18B20)
   disp.showTemp(ds.getTemp());
+#elif defined(USE_NTC)
+  disp.showTemp(ntc.getTemp());
 #else
   disp.showTemp(int(clock.getTemperature()));
 #endif
@@ -678,12 +684,12 @@ void setDisplay()
 // ===================================================
 void setup()
 {
-  // ==== часы =========================================
+  // ==== часы =======================================
   Wire.begin();
   clock.setClockMode(false); // 24-часовой режим
   rtcNow();
 
-  // ==== кнопки Up/Down ===============================
+  // ==== кнопки Up/Down =============================
   btnUp.setLongClickMode(LCM_CLICKSERIES);
   btnUp.setIntervalOfSerial(100);
   btnDown.setLongClickMode(LCM_CLICKSERIES);
@@ -698,7 +704,12 @@ void setup()
 #endif
 #endif
 
-  // ==== задачи =======================================
+// ==== датчики ======================================
+#ifdef USE_NTC
+  ntc.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10
+#endif
+
+  // ==== задачи =====================================
   byte task_count = 5;
 #ifdef USE_LIGHT_SENSOR
   task_count++;
