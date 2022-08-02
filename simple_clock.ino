@@ -11,10 +11,12 @@
 #ifdef USE_ALARM
 #include "alarm.h"
 #endif
+#ifdef USE_TEMP_DATA
 #if defined(USE_DS18B20)
 #include "ds1820.h"
 #elif defined(USE_NTC)
 #include "ntc.h"
+#endif
 #endif
 
 // ==== настройки ====================================
@@ -42,10 +44,12 @@ RTClib RTC;
 #ifdef USE_ALARM
 Alarm alarm(ALARM_LED_PIN, ALARM_EEPROM_INDEX);
 #endif
+#ifdef USE_TEMP_DATA
 #if defined(USE_DS18B20)
 DS1820 ds(DS18B20_PIN); // вход датчика DS18b20
 #elif defined(USE_NTC)
 NTCSensor ntc(NTC_PIN, 10000, 9850, 3950);
+#endif
 #endif
 
 DateTime curTime;
@@ -63,9 +67,9 @@ shHandle alarm_buzzer; // пищалка будильника
 #endif
 #ifdef USE_TEMP_DATA
 shHandle show_temp_mode; // режим показа температуры
-#endif
-#ifdef USE_DS18B20
+#if defined(USE_DS18B20)
 shHandle ds18b20_guard; // опрос датчика DS18b20
+#endif
 #endif
 #ifdef USE_LIGHT_SENSOR
 shHandle light_sensor_guard; // отслеживание показаний датчика света
@@ -716,9 +720,9 @@ void setup()
 #endif
 #ifdef USE_TEMP_DATA
   task_count++;
-#endif
-#ifdef USE_DS18B20
+#if defined(USE_DS18B20)
   task_count++;
+#endif
 #endif
 #ifdef USE_ALARM
   task_count += 2;
@@ -729,11 +733,11 @@ void setup()
   blink_timer = tasks.addTask(500, blink);
   return_to_default_mode = tasks.addTask(AUTO_EXIT_TIMEOUT * 1000ul, returnToDefMode, false);
   set_time_mode = tasks.addTask(100, showTimeSetting, false);
-#ifdef USE_DS18B20
-  ds18b20_guard = tasks.addTask(3000, checkDS18b20);
-#endif
 #ifdef USE_TEMP_DATA
   show_temp_mode = tasks.addTask(500, showTemp, false);
+#if defined(USE_DS18B20)
+  ds18b20_guard = tasks.addTask(3000, checkDS18b20);
+#endif
 #endif
 #ifdef USE_ALARM
   alarm_guard = tasks.addTask(200, checkAlarm);
