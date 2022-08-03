@@ -45,7 +45,7 @@
 #elif defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
 #define DISPLAY_CLK_PIN 13 // пин для подключения экрана - CLK (не менять!!!)
 #define DISPLAY_DIN_PIN 11 // пин для подключения экрана - DAT (не менять!!!)
-#define DISPLAY_CS_PIN 10  // пин для подключения экрана - DAT
+#define DISPLAY_CS_PIN 10  // пин для подключения экрана - CS
 #endif
 
 #ifdef USE_ALARM
