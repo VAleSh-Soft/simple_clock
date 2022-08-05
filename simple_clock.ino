@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include <avr/pgmspace.h>
 #include <DS3231.h>        // https://github.com/NorthernWidget/DS3231
 #include <shButton.h>      // https://github.com/VAleSh-Soft/shButton
 #include <shTaskManager.h> // https://github.com/VAleSh-Soft/shTaskManager
@@ -52,8 +53,6 @@ NTCSensor ntc(NTC_PIN, 10000, 9850, 3950);
 #endif
 #endif
 
-DateTime curTime;
-
 shTaskManager tasks; // создаем список задач, количество задач укажем в setup()
 
 shHandle rtc_guard;              // опрос микросхемы RTC по таймеру, чтобы не дергать ее откуда попало
@@ -64,6 +63,9 @@ shHandle display_guard;          // вывод данных на экран
 #ifdef USE_ALARM
 shHandle alarm_guard;  // отслеживание будильника
 shHandle alarm_buzzer; // пищалка будильника
+#endif
+#ifdef USE_CALENDAR
+shHandle show_calendar_mode; // режим вывода даты
 #endif
 #ifdef USE_TEMP_DATA
 shHandle show_temp_mode; // режим показа температуры
@@ -77,6 +79,7 @@ shHandle light_sensor_guard; // отслеживание показаний да
 
 DisplayMode displayMode = DISPLAY_MODE_SHOW_TIME;
 bool blink_flag = false; // флаг блинка, используется всем, что должно мигать
+DateTime curTime;
 
 // ==== класс кнопок с предварительной настройкой ====
 enum ButtonFlag : uint8_t
@@ -158,6 +161,11 @@ void checkSetButton()
     {
     case DISPLAY_MODE_SET_HOUR:
     case DISPLAY_MODE_SET_MINUTE:
+#ifdef USE_CALENDAR
+    case DISPLAY_MODE_SET_DAY:
+    case DISPLAY_MODE_SET_MONTH:
+    case DISPLAY_MODE_SET_YEAR:
+#endif
 #ifdef USE_ALARM
     case DISPLAY_MODE_SET_ALARM_HOUR:
     case DISPLAY_MODE_SET_ALARM_MINUTE:
@@ -196,8 +204,19 @@ void checkSetButton()
     case DISPLAY_MODE_SHOW_TIME:
       displayMode = DISPLAY_MODE_SET_HOUR;
       break;
+#ifdef USE_CALENDAR
+    case DISPLAY_MODE_SHOW_CALENDAR:
+      tasks.stopTask(show_calendar_mode);
+      displayMode = DISPLAY_MODE_SET_DAY;
+      break;
+#endif
     case DISPLAY_MODE_SET_HOUR:
     case DISPLAY_MODE_SET_MINUTE:
+#ifdef USE_CALENDAR
+    case DISPLAY_MODE_SET_DAY:
+    case DISPLAY_MODE_SET_MONTH:
+    case DISPLAY_MODE_SET_YEAR:
+#endif
 #ifdef USE_ALARM
     case DISPLAY_MODE_SET_ALARM_HOUR:
     case DISPLAY_MODE_SET_ALARM_MINUTE:
@@ -214,7 +233,7 @@ void checkSetButton()
 
 void checkUDbtn(clcButton &btn)
 {
-  switch (btn.getButtonState())
+  switch (btn.getLastState())
   {
   case BTN_DOWN:
   case BTN_DBLCLICK:
@@ -233,22 +252,32 @@ void checkUDbtn(clcButton &btn)
 
 void checkUpDownButton()
 {
+  btnUp.getButtonState();
+  btnDown.getButtonState();
+
   switch (displayMode)
   {
   case DISPLAY_MODE_SHOW_TIME:
-    if (btnUp.getButtonState() == BTN_ONECLICK)
+    if (btnUp.getLastState() == BTN_ONECLICK)
     {
 #ifdef USE_TEMP_DATA
       displayMode = DISPLAY_MODE_SHOW_TEMP;
 #endif
     }
-#ifdef USE_ALARM
-    // опрашивается исключительно чтобы срабатывала на отключение сигнала будильника
-    btnDown.getButtonState();
+    if (btnDown.getLastState() == BTN_ONECLICK)
+    {
+#ifdef USE_CALENDAR
+      displayMode = DISPLAY_MODE_SHOW_CALENDAR;
 #endif
+    }
     break;
   case DISPLAY_MODE_SET_HOUR:
   case DISPLAY_MODE_SET_MINUTE:
+#ifdef USE_CALENDAR
+  case DISPLAY_MODE_SET_DAY:
+  case DISPLAY_MODE_SET_MONTH:
+  case DISPLAY_MODE_SET_YEAR:
+#endif
 #ifdef USE_ALARM
   case DISPLAY_MODE_SET_ALARM_HOUR:
   case DISPLAY_MODE_SET_ALARM_MINUTE:
@@ -259,7 +288,15 @@ void checkUpDownButton()
     break;
 #ifdef USE_TEMP_DATA
   case DISPLAY_MODE_SHOW_TEMP:
-    if (btnUp.getButtonState() == BTN_ONECLICK)
+    if (btnUp.getLastState() == BTN_ONECLICK)
+    {
+      returnToDefMode();
+    }
+    break;
+#endif
+#ifdef USE_CALENDAR
+  case DISPLAY_MODE_SHOW_CALENDAR:
+    if (btnDown.getLastState() == BTN_ONECLICK)
     {
       returnToDefMode();
     }
@@ -301,6 +338,11 @@ void returnToDefMode()
   {
   case DISPLAY_MODE_SET_HOUR:
   case DISPLAY_MODE_SET_MINUTE:
+#ifdef USE_CALENDAR
+  case DISPLAY_MODE_SET_DAY:
+  case DISPLAY_MODE_SET_MONTH:
+  case DISPLAY_MODE_SET_YEAR:
+#endif
 #ifdef USE_ALARM
   case DISPLAY_MODE_SET_ALARM_HOUR:
   case DISPLAY_MODE_SET_ALARM_MINUTE:
@@ -312,6 +354,12 @@ void returnToDefMode()
   case DISPLAY_MODE_SHOW_TEMP:
     displayMode = DISPLAY_MODE_SHOW_TIME;
     tasks.stopTask(show_temp_mode);
+    break;
+#endif
+#ifdef USE_CALENDAR
+  case DISPLAY_MODE_SHOW_CALENDAR:
+    displayMode = DISPLAY_MODE_SHOW_TIME;
+    tasks.stopTask(show_calendar_mode);
     break;
 #endif
   default:
@@ -331,6 +379,9 @@ void showTimeSetting()
   static bool time_checked = false;
   static byte curHour = 0;
   static byte curMinute = 0;
+#ifdef USE_CALENDAR
+  static const byte PROGMEM days_of_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+#endif
 
   if (!tasks.getTaskState(set_time_mode))
   {
@@ -355,11 +406,29 @@ void showTimeSetting()
     time_checked = false;
   }
 
-  if (!time_checked && (displayMode == DISPLAY_MODE_SET_HOUR ||
-                        displayMode == DISPLAY_MODE_SET_MINUTE))
+  if (!time_checked)
   {
-    curHour = curTime.hour();
-    curMinute = curTime.minute();
+    switch (displayMode)
+    {
+    case DISPLAY_MODE_SET_HOUR:
+    case DISPLAY_MODE_SET_MINUTE:
+      curHour = curTime.hour();
+      curMinute = curTime.minute();
+      break;
+#ifdef USE_CALENDAR
+    case DISPLAY_MODE_SET_DAY:
+    case DISPLAY_MODE_SET_MONTH:
+      curHour = curTime.day();
+      curMinute = curTime.month();
+      break;
+    case DISPLAY_MODE_SET_YEAR:
+      curHour = 20;
+      curMinute = curTime.year() % 100;
+      break;
+#endif
+    default:
+      break;
+    }
   }
 
   // опрос кнопок =====================
@@ -373,6 +442,15 @@ void showTimeSetting()
       case DISPLAY_MODE_SET_MINUTE:
         saveTime(curHour, curMinute);
         break;
+#ifdef USE_CALENDAR
+      case DISPLAY_MODE_SET_DAY:
+      case DISPLAY_MODE_SET_MONTH:
+        saveDate(curHour, curMinute);
+        break;
+      case DISPLAY_MODE_SET_YEAR:
+        clock.setYear(curMinute);
+        break;
+#endif
 #ifdef USE_ALARM
       case DISPLAY_MODE_SET_ALARM_HOUR:
       case DISPLAY_MODE_SET_ALARM_MINUTE:
@@ -392,6 +470,11 @@ void showTimeSetting()
       switch (displayMode)
       {
       case DISPLAY_MODE_SET_HOUR:
+#ifdef USE_CALENDAR
+      case DISPLAY_MODE_SET_MINUTE:
+      case DISPLAY_MODE_SET_DAY:
+      case DISPLAY_MODE_SET_MONTH:
+#endif
 #ifdef USE_ALARM
       case DISPLAY_MODE_SET_ALARM_HOUR:
 #endif
@@ -438,6 +521,23 @@ void showTimeSetting()
 #ifdef USE_ALARM
     case DISPLAY_MODE_ALARM_ON_OFF:
       checkData(curHour, 1, true);
+      break;
+#endif
+#ifdef USE_CALENDAR
+    case DISPLAY_MODE_SET_DAY:
+      byte i;
+      i = pgm_read_byte(&days_of_month[curMinute - 1]);
+      if (curMinute == 2 && (curTime.year() % 4 == 0))
+      {
+        i++;
+      }
+      checkData(curHour, i, dir, 1);
+      break;
+    case DISPLAY_MODE_SET_MONTH:
+      checkData(curMinute, 12, dir, 1);
+      break;
+    case DISPLAY_MODE_SET_YEAR:
+      checkData(curMinute, 99, dir);
       break;
 #endif
     default:
@@ -492,6 +592,41 @@ void setDisp()
 {
   disp.show();
 }
+
+#ifdef USE_CALENDAR
+void showCalendar()
+{
+  static byte n = 0;
+  if (!tasks.getTaskState(show_calendar_mode))
+  {
+    tasks.startTask(show_calendar_mode);
+    n = 0;
+  }
+
+  byte d = 0;
+  byte m = 0;
+  if (n < 10)
+  {
+    d = curTime.day();
+    m = curTime.month();
+  }
+  else
+  {
+    d = 20;
+    m = curTime.year() % 100;
+  }
+#ifdef MAX72XX_MATRIX_DISPLAY
+  disp.showTime(d, m, (n < 10), true);
+#else
+  disp.showTime(d, m, (n < 10));
+#endif
+
+  if (n++ >= 20)
+  {
+    returnToDefMode();
+  }
+}
+#endif
 
 #ifdef USE_ALARM
 void checkAlarm()
@@ -579,12 +714,19 @@ void showTimeData(byte hour, byte minute)
     switch (displayMode)
     {
     case DISPLAY_MODE_SET_HOUR:
+#ifdef USE_CALENDAR
+    case DISPLAY_MODE_SET_DAY:
+#endif
 #ifdef USE_ALARM
     case DISPLAY_MODE_SET_ALARM_HOUR:
 #endif
       hour = -1;
       break;
     case DISPLAY_MODE_SET_MINUTE:
+#ifdef USE_CALENDAR
+    case DISPLAY_MODE_SET_MONTH:
+    case DISPLAY_MODE_SET_YEAR:
+#endif
 #ifdef USE_ALARM
     case DISPLAY_MODE_SET_ALARM_MINUTE:
 #endif
@@ -594,7 +736,14 @@ void showTimeData(byte hour, byte minute)
       break;
     }
   }
+
+#if defined (USE_CALENDAR) && defined (MAX72XX_MATRIX_DISPLAY)
+  bool toDate = false;
+  toDate = (displayMode >= DISPLAY_MODE_SET_DAY && displayMode <= DISPLAY_MODE_SET_YEAR);
+  disp.showTime(hour, minute, false, toDate);
+#else
   disp.showTime(hour, minute, false);
+#endif
 }
 
 #ifdef USE_ALARM
@@ -644,13 +793,21 @@ void saveTime(byte hour, byte minute)
   clock.setSecond(0);
 }
 
+#ifdef USE_CALENDAR
+void saveDate(byte day, byte month)
+{
+  clock.setDate(day);
+  clock.setMonth(month);
+}
+#endif
+
 // ===================================================
-void checkData(byte &dt, byte max, bool toUp)
+void checkData(byte &dt, byte max, bool toUp, byte min)
 {
   (toUp) ? dt++ : dt--;
-  if (dt > max)
+  if ((dt > max) || (min > 0 && dt < min))
   {
-    dt = (toUp) ? 0 : max;
+    dt = (toUp) ? min : max;
   }
 }
 
@@ -661,6 +818,11 @@ void setDisplay()
   {
   case DISPLAY_MODE_SET_HOUR:
   case DISPLAY_MODE_SET_MINUTE:
+#ifdef USE_CALENDAR
+  case DISPLAY_MODE_SET_DAY:
+  case DISPLAY_MODE_SET_MONTH:
+  case DISPLAY_MODE_SET_YEAR:
+#endif
 #ifdef USE_ALARM
   case DISPLAY_MODE_SET_ALARM_HOUR:
   case DISPLAY_MODE_SET_ALARM_MINUTE:
@@ -676,6 +838,14 @@ void setDisplay()
     if (!tasks.getTaskState(show_temp_mode))
     {
       showTemp();
+    }
+    break;
+#endif
+#ifdef USE_CALENDAR
+  case DISPLAY_MODE_SHOW_CALENDAR:
+    if (!tasks.getTaskState(show_calendar_mode))
+    {
+      showCalendar();
     }
     break;
 #endif
@@ -703,14 +873,14 @@ void setup()
 #if defined(MAX72XX_MATRIX_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
   disp.shutdownAllDevices(false);
 #ifdef MAX72XX_MATRIX_DISPLAY
-  disp.setDirection(2);
-// disp.setFlip(true);
+  disp.setDirection(2); // задайте нужный вам поворот картинки (0-3)
+  // disp.setFlip(true);   // раскомментируйте, если нужно включить отражение кратинки по горизонтали
 #endif
 #endif
 
 // ==== датчики ======================================
 #ifdef USE_NTC
-  ntc.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10
+  ntc.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
 #endif
 
   // ==== задачи =====================================
@@ -723,6 +893,9 @@ void setup()
 #if defined(USE_DS18B20)
   task_count++;
 #endif
+#endif
+#ifdef USE_CALENDAR
+  task_count++;
 #endif
 #ifdef USE_ALARM
   task_count += 2;
@@ -738,6 +911,9 @@ void setup()
 #if defined(USE_DS18B20)
   ds18b20_guard = tasks.addTask(3000, checkDS18b20);
 #endif
+#endif
+#ifdef USE_CALENDAR
+  show_calendar_mode = tasks.addTask(200, showCalendar, false);
 #endif
 #ifdef USE_ALARM
   alarm_guard = tasks.addTask(200, checkAlarm);

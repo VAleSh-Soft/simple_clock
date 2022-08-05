@@ -10,6 +10,10 @@
 // #define MAX72XX_7SEGMENT_DISPLAY // использовать семисегментный экран на драйвере MAX7219 или MAX7221, четыре цифры
 // #define MAX72XX_MATRIX_DISPLAY // использовать матричный экран на драйвере MAX7219 или MAX7221 и четырех матрицах 8х8 светодиодов
 
+// ==== календарь ====================================
+
+// #define USE_CALENDAR // использовать или нет вывод даты по клику кнопкой Down
+
 // ==== будильник ====================================
 
 // #define USE_ALARM        // использовать или нет будильник
@@ -57,9 +61,9 @@
 #define LIGHT_SENSOR_PIN A3 // пин для подключения датчика света
 #endif
 
-#if defined (USE_DS18B20)
+#if defined(USE_DS18B20)
 #define DS18B20_PIN 8 // пин для подключения датчика DS18b20
-#elif defined (USE_NTC)
+#elif defined(USE_NTC)
 #define NTC_PIN A0 // пин для подключения NTC термистора
 #endif
 
@@ -75,6 +79,12 @@ enum DisplayMode : uint8_t
   DISPLAY_MODE_SHOW_TIME, // основной режим - вывод времени на индикатор
   DISPLAY_MODE_SET_HOUR,  // режим настройки часов
   DISPLAY_MODE_SET_MINUTE // режим настройки минут
+#ifdef USE_CALENDAR
+  ,
+  DISPLAY_MODE_SET_DAY,   // режим настройки дня месяца
+  DISPLAY_MODE_SET_MONTH, // режим настройки месяца
+  DISPLAY_MODE_SET_YEAR   // режим настройки года
+#endif
 #ifdef USE_ALARM
   ,
   DISPLAY_MODE_ALARM_ON_OFF,    // режим настройки будильника - вкл/выкл
@@ -84,6 +94,10 @@ enum DisplayMode : uint8_t
 #ifdef USE_TEMP_DATA
   ,
   DISPLAY_MODE_SHOW_TEMP // режим вывода температуры
+#endif
+#ifdef USE_CALENDAR
+  ,
+  DISPLAY_MODE_SHOW_CALENDAR // режим вывода даты
 #endif
 };
 
@@ -99,6 +113,9 @@ void restartBlink();
 void returnToDefMode();
 void showTimeSetting();
 void setDisp();
+#ifdef USE_CALENDAR
+void showCalendar();
+#endif
 #ifdef USE_ALARM
 void checkAlarm();
 void runAlarmBuzzer();
@@ -132,6 +149,11 @@ void showAlarmState(byte _state);
 // сохранение времени после настройки
 void saveTime(byte hour, byte minute);
 
+#ifdef USE_CALENDAR
+// сохранение даты после настройки
+void saveDate(byte day, byte month);
+#endif
+
 // ==== разное =======================================
 // изменение данных по клику кнопки с контролем выхода за предельное значение
-void checkData(byte &dt, byte max, bool toUp);
+void checkData(byte &dt, byte max, bool toUp, byte min = 0);
