@@ -47,9 +47,9 @@ Alarm alarm(ALARM_LED_PIN, ALARM_EEPROM_INDEX);
 #endif
 #ifdef USE_TEMP_DATA
 #if defined(USE_DS18B20)
-DS1820 ds(DS18B20_PIN); // вход датчика DS18b20
+DS1820 temp_sensor(DS18B20_PIN); // вход датчика DS18b20
 #elif defined(USE_NTC)
-NTCSensor ntc(NTC_PIN, 10000, 9850, 3950);
+NTCSensor temp_sensor(NTC_PIN, 10000, 9850, 3950);
 #endif
 #endif
 
@@ -562,14 +562,13 @@ void showTimeSetting()
   }
 }
 
+#ifdef USE_TEMP_DATA
 #ifdef USE_DS18B20
 void checkDS18b20()
 {
-  ds.readData();
+  temp_sensor.readData();
 }
 #endif
-
-#ifdef USE_TEMP_DATA
 void showTemp()
 {
   if (!tasks.getTaskState(show_temp_mode))
@@ -578,12 +577,10 @@ void showTemp()
     tasks.startTask(show_temp_mode);
   }
 
-#if defined(USE_DS18B20)
-  disp.showTemp(ds.getTemp());
-#elif defined(USE_NTC)
-  disp.showTemp(ntc.getTemp());
+#if defined(USE_DS18B20) || defined(USE_NTC)
+  disp.showTemp(temp_sensor.getTemp());
 #else
-  disp.showTemp(int(clock.getTemperature()));
+  disp.showTemp((int)round(clock.getTemperature()));
 #endif
 }
 #endif
@@ -737,7 +734,7 @@ void showTimeData(byte hour, byte minute)
     }
   }
 
-#if defined (USE_CALENDAR) && defined (MAX72XX_MATRIX_DISPLAY)
+#if defined(USE_CALENDAR) && defined(MAX72XX_MATRIX_DISPLAY)
   bool toDate = false;
   toDate = (displayMode >= DISPLAY_MODE_SET_DAY && displayMode <= DISPLAY_MODE_SET_YEAR);
   disp.showTime(hour, minute, false, toDate);
@@ -879,12 +876,12 @@ void setup()
 #endif
 
 // ==== датчики ======================================
-#ifdef USE_NTC
-  ntc.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
+#if defined(USE_NTC)
+  temp_sensor.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
 #endif
 
   // ==== задачи =====================================
-  byte task_count = 5;
+  byte task_count = 5; // базовое количество задач
 #ifdef USE_LIGHT_SENSOR
   task_count++;
 #endif

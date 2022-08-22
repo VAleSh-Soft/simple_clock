@@ -3,7 +3,7 @@
 
    Методы библиотеки:
 
-   NTCSensor ntc(_sensor_pin, _resistor_std, _balance_resistor, _beta = 3950) - конструктора класса.
+   NTCSensor temp_sensor(_sensor_pin, _resistor_std, _balance_resistor, _beta = 3950) - конструктора класса.
    Список аргументов:
 
     _sensor_pin - аналоговый пин, куда подключен датчик;
