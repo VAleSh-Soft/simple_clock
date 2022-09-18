@@ -100,7 +100,6 @@ public:
     shButton::setTimeoutOfLongClick(1000);
     shButton::setLongClickMode(LCM_ONLYONCE);
     shButton::setVirtualClickOn(true);
-    shButton::setTimeoutOfDebounce(50);
   }
 
   ButtonFlag getBtnFlag()
@@ -311,6 +310,10 @@ void checkUpDownButton()
 void rtcNow()
 {
   curTime = RTC.now();
+  if (displayMode == DISPLAY_MODE_SHOW_TIME)
+  {
+    disp.showTime(curTime.hour(), curTime.minute(), blink_flag);
+  }
 }
 
 void blink()
@@ -698,11 +701,6 @@ void setBrightness()
 #endif
 
 // ===================================================
-void showTime(DateTime dt)
-{
-  disp.showTime(dt.hour(), dt.minute(), blink_flag);
-}
-
 void showTimeData(byte hour, byte minute)
 {
   // если наступило время блинка и кнопки Up/Down не нажаты, то стереть соответствующие разряды; при нажатых кнопках Up/Down во время изменения данных ничего не мигает
@@ -847,7 +845,6 @@ void setDisplay()
     break;
 #endif
   default:
-    showTime(curTime);
     break;
   }
 }
@@ -871,7 +868,7 @@ void setup()
   disp.shutdownAllDevices(false);
 #ifdef MAX72XX_MATRIX_DISPLAY
   disp.setDirection(2); // задайте нужный вам поворот картинки (0-3)
-  // disp.setFlip(true);   // раскомментируйте, если нужно включить отражение кратинки по горизонтали
+  // disp.setFlip(true);   // раскомментируйте, если нужно включить отражение картинки по горизонтали
 #endif
 #endif
 

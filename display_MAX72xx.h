@@ -11,40 +11,6 @@ class DisplayMAX72xx7segment : public shMAX72xx7Segment<cs_pin, 1, 4>
 private:
   byte data[4];
 
-public:
-  DisplayMAX72xx7segment() : shMAX72xx7Segment<cs_pin, 1, 4>() { clear(); }
-
-  // очистка буфера экрана, сам экран при этом не очищается
-  void clear()
-  {
-    for (byte i = 0; i < 4; i++)
-    {
-      data[i] = 0x00;
-    }
-  }
-
-  // очистка экрана
-  void sleep()
-  {
-    clear();
-    shMAX72xx7Segment<cs_pin, 1, 4>::clearAllDevices(true);
-  }
-
-  // установка разряда _index буфера экрана
-  void setDispData(byte _index, byte _data)
-  {
-    if (_index < 4)
-    {
-      data[_index] = _data;
-    }
-  }
-
-  // получение значения разряда _index буфера экрана
-  byte getDispData(byte _index)
-  {
-    return ((_index < 4) ? data[_index] : 0);
-  }
-
   void setSegments(byte *data)
   {
     shMAX72xx7Segment<cs_pin, 1, 4>::clearAllDevices();
@@ -56,7 +22,60 @@ public:
     shMAX72xx7Segment<cs_pin, 1, 4>::update();
   }
 
-  // отрисовка на экране содержимого его буфера
+public:
+  DisplayMAX72xx7segment() : shMAX72xx7Segment<cs_pin, 1, 4>() { clear(); }
+
+  /**
+   * @brief очистка буфера экрана, сам экран при этом не очищается
+   *
+   */
+  void clear()
+  {
+    for (byte i = 0; i < 4; i++)
+    {
+      data[i] = 0x00;
+    }
+  }
+
+  /**
+   * @brief очистка экрана
+   *
+   */
+  void sleep()
+  {
+    clear();
+    shMAX72xx7Segment<cs_pin, 1, 4>::clearAllDevices(true);
+  }
+
+  /**
+   * @brief установка разряда _index буфера экрана
+   *
+   * @param _index индекс разряда (0..3)
+   * @param _data данные для установки
+   */
+  void setDispData(byte _index, byte _data)
+  {
+    if (_index < 4)
+    {
+      data[_index] = _data;
+    }
+  }
+
+  /**
+   * @brief получение значения разряда _index буфера экрана
+   *
+   * @param _index индекс разряда (0..3)
+   * @return byte
+   */
+  byte getDispData(byte _index)
+  {
+    return ((_index < 4) ? data[_index] : 0);
+  }
+
+  /**
+   * @brief отрисовка на экране содержимого его буфера
+   *
+   */
   void show()
   {
     bool flag = false;
@@ -80,7 +99,13 @@ public:
     }
   }
 
-  // вывод на экран  времени; если задать какое-то из значений hour или minute отрицательным, эта часть экрана будет очищена - можно организовать мигание, например, в процессе настройки времени; show_colon - отображать или нет двоеточие между часами и минутами
+  /**
+   * @brief вывод на экран  времени; если задать какое-то из значений hour или minute отрицательным, эта часть экрана будет очищена - можно организовать мигание, например, в процессе настройки времени
+   *
+   * @param hour часы
+   * @param minute минуты
+   * @param show_colon отображать или нет двоеточие между часами и минутами
+   */
   void showTime(int8_t hour, int8_t minute, bool show_colon)
   {
     clear();
@@ -100,7 +125,11 @@ public:
     }
   }
 
-  // вывод на экран температуры в диапазоне от -99 до +99 градусов; вне диапазона выводится строка минусов
+  /**
+   * @brief вывод на экран температуры в диапазоне от -99 до +99 градусов; вне диапазона выводится строка минусов
+   *
+   * @param temp данные для вывода
+   */
   void showTemp(int temp)
   {
     clear();
@@ -133,7 +162,11 @@ public:
     }
   }
 
-  // установка яркости экрана; реально яркость будет изменена только после вызова метода show()
+/**
+   * @brief установка яркости экрана
+   *
+   * @param brightness значение яркости (1..7)
+   */
   void setBrightness(byte brightness)
   {
     brightness = map(brightness, 1, 7, 0, 15);
@@ -170,40 +203,6 @@ class DisplayMAX72xxMatrix : public shMAX72xxMini<cs_pin, 4>
 {
 private:
   byte data[5];
-
-public:
-  DisplayMAX72xxMatrix() : shMAX72xxMini<cs_pin, 4>() { clear(); }
-
-  // очистка буфера экрана, сам экран при этом не очищается
-  void clear()
-  {
-    for (byte i = 0; i < 4; i++)
-    {
-      data[i] = 0x0a; // пустой символ в массиве идет под индексом 10
-    }
-  }
-
-  // очистка экрана
-  void sleep()
-  {
-    clear();
-    shMAX72xxMini<cs_pin, 4>::clearAllDevices(true);
-  }
-
-  // установка разряда _index буфера экрана
-  void setDispData(byte _index, byte _data)
-  {
-    if (_index < 5)
-    {
-      data[_index] = _data;
-    }
-  }
-
-  // получение значения разряда _index буфера экрана
-  byte getDispData(byte _index)
-  {
-    return ((_index < 5) ? data[_index] : 0);
-  }
 
   void setSegments(byte *data)
   {
@@ -246,7 +245,60 @@ public:
     shMAX72xxMini<cs_pin, 4>::update();
   }
 
-  // отрисовка на экране содержимого его буфера
+public:
+  DisplayMAX72xxMatrix() : shMAX72xxMini<cs_pin, 4>() { clear(); }
+
+  /**
+   * @brief очистка буфера экрана, сам экран при этом не очищается
+   *
+   */
+  void clear()
+  {
+    for (byte i = 0; i < 4; i++)
+    {
+      data[i] = 0x0a; // пустой символ в массиве идет под индексом 10
+    }
+  }
+
+  /**
+   * @brief очистка экрана
+   *
+   */
+  void sleep()
+  {
+    clear();
+    shMAX72xxMini<cs_pin, 4>::clearAllDevices(true);
+  }
+
+  /**
+   * @brief установка разряда _index буфера экрана
+   *
+   * @param _index индекс разряда (0..3)
+   * @param _data данные для установки
+   */
+  void setDispData(byte _index, byte _data)
+  {
+    if (_index < 5)
+    {
+      data[_index] = _data;
+    }
+  }
+
+  /**
+   * @brief получение значения разряда _index буфера экрана
+   *
+   * @param _index индекс разряда (0..3)
+   * @return byte
+   */
+  byte getDispData(byte _index)
+  {
+    return ((_index < 5) ? data[_index] : 0);
+  }
+
+  /**
+   * @brief отрисовка на экране содержимого его буфера
+   * 
+   */
   void show()
   {
     bool flag = false;
@@ -270,7 +322,13 @@ public:
     }
   }
 
-  // вывод на экран  времени или даты; если задать какое-то из значений hour или minute отрицательным, эта часть экрана будет очищена - можно организовать мигание, например, в процессе настройки времени; show_colon - отображать или нет двоеточие между часами и минутами (или точку между днем и месяцем)
+  /**
+   * @brief вывод на экран  времени; если задать какое-то из значений hour или minute отрицательным, эта часть экрана будет очищена - можно организовать мигание, например, в процессе настройки времени
+   *
+   * @param hour часы
+   * @param minute минуты
+   * @param show_colon отображать или нет двоеточие между часами и минутами
+   */
   void showTime(int8_t hour, int8_t minute, bool show_colon, bool date = false)
   {
     clear();
@@ -284,10 +342,14 @@ public:
       data[2] = minute / 10;
       data[3] = minute % 10;
     }
-    data[4] = (date) ?(byte)show_colon + 3: show_colon;
+    data[4] = (date) ? (byte)show_colon + 3 : show_colon;
   }
 
-  // вывод на экран температуры в диапазоне от -99 до +99 градусов; вне диапазона выводится строка минусов
+  /**
+   * @brief вывод на экран температуры в диапазоне от -99 до +99 градусов; вне диапазона выводится строка минусов
+   *
+   * @param temp данные для вывода
+   */
   void showTemp(int temp)
   {
     clear();
@@ -320,7 +382,11 @@ public:
     }
   }
 
-  // установка яркости экрана
+/**
+   * @brief установка яркости экрана
+   *
+   * @param brightness значение яркости (1..7)
+   */
   void setBrightness(byte brightness)
   {
     brightness = map(brightness, 1, 7, 0, 15);

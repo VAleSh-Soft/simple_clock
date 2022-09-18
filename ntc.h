@@ -41,6 +41,11 @@ public:
     beta = _beta;
   }
 
+  /**
+   * @brief получение температуры с датчика
+   *
+   * @return uint16_t
+   */
   uint16_t getTemp()
   {
     static uint16_t adcAverage = analogRead(sensor_pin);
@@ -58,6 +63,11 @@ public:
     return (tCelsius);
   }
 
+  /**
+   * @brief установка разрядности АЦП используемого микроконтроллера; для Ардуино UNO, Nano, Pro Mini bit_depth = 10
+   *
+   * @param bit_depth разрядность, бит
+   */
   void setADCbitDepth(uint8_t bit_depth)
   {
     uint32_t d = 1;

@@ -15,7 +15,10 @@ public:
     clear();
   }
 
-  // очистка буфера экрана, сам экран при этом не очищается
+  /**
+   * @brief очистка буфера экрана, сам экран при этом не очищается
+   * 
+   */
   void clear()
   {
     for (byte i = 0; i < 4; i++)
@@ -24,14 +27,22 @@ public:
     }
   }
 
-  // очистка экрана
+  /**
+   * @brief очистка экрана
+   * 
+   */
   void sleep()
   {
     clear();
     TM1637Display::setSegments(data);
   }
 
-  // установка разряда _index буфера экрана
+  /**
+   * @brief установка разряда _index буфера экрана
+   * 
+   * @param _index разряд буфера
+   * @param _data данные для установки
+   */
   void setDispData(byte _index, byte _data)
   {
     if (_index < 4)
@@ -40,13 +51,21 @@ public:
     }
   }
 
-  // получение значения разряда _index буфера экрана
+  /**
+   * @brief получение значения разряда _index буфера экрана
+   * 
+   * @param _index разряд буфера
+   * @return byte 
+   */
   byte getDispData(byte _index)
   {
     return ((_index < 4) ? data[_index] : 0);
   }
 
-  // отрисовка на экране содержимого его буфера
+  /**
+   * @brief отрисовка на экране содержимого его буфера
+   * 
+   */
   void show()
   {
     bool flag = false;
@@ -76,7 +95,13 @@ public:
     }
   }
 
-  // вывод на экран  времени; если задать какое-то из значений hour или minute отрицательным, эта часть экрана будет очищена - можно организовать мигание, например, в процессе настройки времени; show_colon - отображать или нет двоеточие между часами и минутами
+  /**
+   * @brief вывод на экран  времени; если задать какое-то из значений hour или minute отрицательным, эта часть экрана будет очищена - можно организовать мигание, например, в процессе настройки времени
+   *
+   * @param hour часы
+   * @param minute минуты
+   * @param show_colon отображать или нет двоеточие между часами и минутами
+   */
   void showTime(int8_t hour, int8_t minute, bool show_colon)
   {
     clear();
@@ -96,7 +121,11 @@ public:
     }
   }
 
-  // вывод на экран температуры в диапазоне от -99 до +99 градусов; вне диапазона выводится строка минусов
+  /**
+   * @brief вывод на экран температуры в диапазоне от -99 до +99 градусов; вне диапазона выводится строка минусов
+   *
+   * @param temp данные для вывода
+   */
   void showTemp(int temp)
   {
     clear();
@@ -129,10 +158,14 @@ public:
     }
   }
 
-  // установка яркости экрана; реально яркость будет изменена только после вызова метода show()
-  void setBrightness(byte brightness, bool on = true)
+  /**
+   * @brief установка яркости экрана; реально яркость будет изменена только после вызова метода show()
+   *
+   * @param brightness значение яркости (1..7)
+   */
+  void setBrightness(byte brightness)
   {
-    _brightness = brightness;
-    TM1637Display::setBrightness(brightness, on);
+    _brightness = (brightness <= 7) ? brightness : 7;
+    TM1637Display::setBrightness(brightness, true);
   }
 };

@@ -122,9 +122,9 @@ void runAlarmBuzzer();
 #endif
 #ifdef USE_TEMP_DATA
 void showTemp();
-#endif
 #ifdef USE_DS18B20
 void checkDS18b20();
+#endif
 #endif
 #ifdef USE_LIGHT_SENSOR
 void setBrightness();
@@ -136,13 +136,6 @@ void setBrightness();
  * 
  */
 void setDisplay();
-
-/**
- * @brief вывод на экран времени
- * 
- * @param dt - время для вывода
- */
-void showTime(DateTime dt);
 
 /**
  * @brief вывод на экран данных в режиме настройки времени или будильника

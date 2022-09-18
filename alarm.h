@@ -39,11 +39,15 @@ private:
     return (_data);
   }
 
-  void write_eeprom_8(IndexOffset _index, uint8_t _data) { EEPROM.update(eeprom_index + _index,
-                                                                         _data); }
+  void write_eeprom_8(IndexOffset _index, uint8_t _data)
+  {
+    EEPROM.update(eeprom_index + _index, _data);
+  }
 
-  void write_eeprom_16(IndexOffset _index, uint16_t _data) { EEPROM.put(eeprom_index + _index,
-                                                                        _data); }
+  void write_eeprom_16(IndexOffset _index, uint16_t _data)
+  {
+    EEPROM.put(eeprom_index + _index, _data);
+  }
 
   void setLed()
   {
@@ -85,22 +89,58 @@ public:
     state = (AlarmState)read_eeprom_8(ALARM_STATE);
   }
 
+  /**
+   * @brief получение текущего состояния будильника
+   *
+   * @return AlarmState
+   */
   AlarmState getAlarmState() { return (state); }
 
+  /**
+   * @brief установка текущего состояния будильника
+   *
+   * @param _state новое значение состояния будильника
+   */
   void setAlarmState(AlarmState _state) { state = _state; }
 
+  /**
+   * @brief получение информации о состоянии будильника - включен/выключен
+   *
+   * @return true
+   * @return false
+   */
   bool getOnOffAlarm() { return (bool)read_eeprom_8(ALARM_STATE); }
 
+  /**
+   * @brief включение/выключение будильника
+   *
+   * @param _state флаг для установки состояния будильника
+   */
   void setOnOffAlarm(bool _state)
   {
     write_eeprom_8(ALARM_STATE, (byte)_state);
     state = (AlarmState)_state;
   }
 
+  /**
+   * @brief получение установленного времени срабатывания будильника в минутах от начала суток
+   *
+   * @return uint16_t
+   */
   uint16_t getAlarmPoint() { return (read_eeprom_16(ALARM_POINT)); }
 
+/**
+ * @brief установка времени срабатывания будильника
+ * 
+ * @param _time время в минутах от начала суток
+ */
   void setAlarmPoint(uint16_t _time) { write_eeprom_16(ALARM_POINT, _time); }
 
+/**
+ * @brief проверка текущего состояния будильника
+ * 
+ * @param _time текущее время
+ */
   void tick(DateTime _time)
   {
     setLed();
