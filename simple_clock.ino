@@ -816,9 +816,19 @@ void showBrightnessSetting()
   y = 0x00;
 #endif
 #endif
-  disp.setDispData(1, y);
-  disp.setDispData(2, x / 10);
-  disp.setDispData(3, x % 10);
+#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(TM1637_DISPLAY)
+  {
+    disp.setDispData(1, disp.encodeDigit(y));
+    disp.setDispData(2, disp.encodeDigit(x / 10));
+    disp.setDispData(3, disp.encodeDigit(x % 10));
+  }
+#else
+  {
+    disp.setDispData(1, y);
+    disp.setDispData(2, x / 10);
+    disp.setDispData(3, x % 10);
+  }
+#endif
 }
 #endif
 
@@ -993,10 +1003,10 @@ void setup()
 #if defined(USE_NTC)
   temp_sensor.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
 #endif
-// проверить корректность заданных уровней яркости
-byte x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
+  // проверить корректность заданных уровней яркости
+  byte x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
 #if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
-  x = (x > 15) ? 15: x;
+  x = (x > 15) ? 15 : x;
 #else
   x = ((x > 7) || (x == 0)) ? 7 : x;
 #endif
