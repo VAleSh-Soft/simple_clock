@@ -6,17 +6,17 @@
 
 // === используемые экраны (использовать только один))
 
-#define TM1637_DISPLAY // использовать семисегментный экран на драйвере TM1637
+// #define TM1637_DISPLAY // использовать семисегментный экран на драйвере TM1637
 // #define MAX72XX_7SEGMENT_DISPLAY // использовать семисегментный экран на драйвере MAX7219 или MAX7221, четыре цифры
-// #define MAX72XX_MATRIX_DISPLAY // использовать матричный экран на драйвере MAX7219 или MAX7221 и четырех матрицах 8х8 светодиодов
+#define MAX72XX_MATRIX_DISPLAY // использовать матричный экран на драйвере MAX7219 или MAX7221 и четырех матрицах 8х8 светодиодов
 
 // ==== календарь ====================================
 
-// #define USE_CALENDAR // использовать или нет вывод даты по клику кнопкой Down
+#define USE_CALENDAR // использовать или нет вывод даты по клику кнопкой Down
 
 // ==== будильник ====================================
 
-// #define USE_ALARM        // использовать или нет будильник
+#define USE_ALARM        // использовать или нет будильник
 
 #ifdef USE_ALARM
 // #define USE_ONECLICK_TO_SET_ALARM // использовать одинарный клик кнопкой Set для входа в настройки будильника, иначе вход по двойному клику
@@ -25,7 +25,8 @@
 // ==== датчики ======================================
 
 // #define USE_LIGHT_SENSOR // использовать или нет датчик света на пине А3 для регулировки яркости экрана
-// #define USE_TEMP_DATA // использовать или нет вывод на экран температуры по клику кнопкой Up
+#define USE_SET_BRIGHTNESS_MODE // использовать режим настройки минимального и максимального уровней яркости
+#define USE_TEMP_DATA // использовать или нет вывод на экран температуры по клику кнопкой Up
 
 #ifdef USE_TEMP_DATA
 // #define USE_DS18B20 // использовать для вывода температуры датчик DS18b20
@@ -72,6 +73,10 @@
 #ifdef USE_ALARM
 #define ALARM_EEPROM_INDEX 100 // индекс в EEPROM для сохранения настроек будильника
 #endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+#define MIN_BRIGHTNESS_VALUE 98 // индекс в EEPROM для сохранения  минимального значения яркости экрана
+#endif
+#define MAX_BRIGHTNESS_VALUE 99 // индекс в EEPROM для сохранения  максимального значение яркости экрана
 
 // ==== режимы экрана ================================
 enum DisplayMode : uint8_t
@@ -98,6 +103,14 @@ enum DisplayMode : uint8_t
 #ifdef USE_CALENDAR
   ,
   DISPLAY_MODE_SHOW_CALENDAR // режим вывода даты
+#endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+#ifdef USE_LIGHT_SENSOR
+  ,
+  DISPLAY_MODE_SET_BRIGHTNESS_MIN // режим настройки минимального уровня яркости экрана
+#endif
+  ,
+  DISPLAY_MODE_SET_BRIGHTNESS_MAX // режим настройки максимального уровня яркости экрана
 #endif
 };
 
@@ -129,17 +142,20 @@ void checkDS18b20();
 #ifdef USE_LIGHT_SENSOR
 void setBrightness();
 #endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+void showBrightnessSetting();
+#endif
 
 // ==== вывод данных =================================
 /**
  * @brief вывод данных на экран
- * 
+ *
  */
 void setDisplay();
 
 /**
  * @brief вывод на экран данных в режиме настройки времени или будильника
- * 
+ *
  * @param hour  часы
  * @param minute  минуты
  */
@@ -148,35 +164,16 @@ void showTimeData(byte hour, byte minute);
 #ifdef USE_ALARM
 /**
  * @brief вывод на экран данных по состоянию будильника
- * 
+ *
  * @param _state состояние (включено/выключено)
  */
 void showAlarmState(byte _state);
 #endif
 
-// ==== часы =========================================
-/**
- * @brief сохранение времени после настройки
- * 
- * @param hour часы
- * @param minute минуты
- */
-void saveTime(byte hour, byte minute);
-
-#ifdef USE_CALENDAR
-/**
- * @brief сохранение даты после настройки
- * 
- * @param day число месяца
- * @param month месяц
- */
-void saveDate(byte day, byte month);
-#endif
-
 // ==== разное =======================================
 /**
  * @brief изменение данных по клику кнопки с контролем выхода за предельное значение
- * 
+ *
  * @param dt данные для изменения
  * @param max максимально возможное значение
  * @param toUp увеличение (true) или уменьшение данных (false)

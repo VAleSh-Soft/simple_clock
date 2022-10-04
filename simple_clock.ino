@@ -1,4 +1,5 @@
 #include <Wire.h>
+#include <EEPROM.h>
 #include <avr/pgmspace.h>
 #include <DS3231.h>        // https://github.com/NorthernWidget/DS3231
 #include <shButton.h>      // https://github.com/VAleSh-Soft/shButton
@@ -26,10 +27,8 @@
 #define ALARM_SNOOZE_DELAY 120   // задержка повтора сигнала будильника, секунд
 #define ALARM_REPETITION_COUNT 3 // количество повторов сигнала будильника
 #endif
-#define MIN_DISPLAY_BRIGHTNESS 1 // минимальная яркость дисплея, 1-7
-#define MAX_DISPLAY_BRIGHTNESS 7 // максимальная яркость дисплея, 1-7
-#define LIGHT_THRESHOLD 300      // порог переключения для датчика света
-#define AUTO_EXIT_TIMEOUT 6      // время автоматического возврата в режим показа текущего времени из любых других режимов при отсутствии активности пользователя, секунд
+#define LIGHT_THRESHOLD 300 // порог переключения для датчика света
+#define AUTO_EXIT_TIMEOUT 6 // время автоматического возврата в режим показа текущего времени из любых других режимов при отсутствии активности пользователя, секунд
 // ===================================================
 
 #if defined(TM1637_DISPLAY)
@@ -75,6 +74,9 @@ shHandle ds18b20_guard; // опрос датчика DS18b20
 #endif
 #ifdef USE_LIGHT_SENSOR
 shHandle light_sensor_guard; // отслеживание показаний датчика света
+#endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+shHandle set_brightness_mode; // режим настройки яркости экрана
 #endif
 
 DisplayMode displayMode = DISPLAY_MODE_SHOW_TIME;
@@ -170,6 +172,12 @@ void checkSetButton()
     case DISPLAY_MODE_SET_ALARM_MINUTE:
     case DISPLAY_MODE_ALARM_ON_OFF:
 #endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+#ifdef USE_LIGHT_SENSOR
+    case DISPLAY_MODE_SET_BRIGHTNESS_MIN:
+#endif
+    case DISPLAY_MODE_SET_BRIGHTNESS_MAX:
+#endif
       btnSet.setBtnFlag(BTN_FLAG_NEXT);
       break;
     case DISPLAY_MODE_SHOW_TIME:
@@ -257,18 +265,29 @@ void checkUpDownButton()
   switch (displayMode)
   {
   case DISPLAY_MODE_SHOW_TIME:
+#ifdef USE_TEMP_DATA
     if (btnUp.getLastState() == BTN_ONECLICK)
     {
-#ifdef USE_TEMP_DATA
       displayMode = DISPLAY_MODE_SHOW_TEMP;
-#endif
     }
+#endif
+#ifdef USE_CALENDAR
     if (btnDown.getLastState() == BTN_ONECLICK)
     {
-#ifdef USE_CALENDAR
       displayMode = DISPLAY_MODE_SHOW_CALENDAR;
+    }
+#endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+    if (btnUp.isSecondButtonPressed(btnDown, BTN_LONGCLICK) ||
+        btnDown.isSecondButtonPressed(btnUp, BTN_LONGCLICK))
+    {
+#ifdef USE_LIGHT_SENSOR
+      displayMode = DISPLAY_MODE_SET_BRIGHTNESS_MIN;
+#else
+      displayMode = DISPLAY_MODE_SET_BRIGHTNESS_MAX;
 #endif
     }
+#endif
     break;
   case DISPLAY_MODE_SET_HOUR:
   case DISPLAY_MODE_SET_MINUTE:
@@ -282,8 +301,20 @@ void checkUpDownButton()
   case DISPLAY_MODE_SET_ALARM_MINUTE:
   case DISPLAY_MODE_ALARM_ON_OFF:
 #endif
-    checkUDbtn(btnUp);
-    checkUDbtn(btnDown);
+#ifdef USE_SET_BRIGHTNESS_MODE
+#ifdef USE_LIGHT_SENSOR
+  case DISPLAY_MODE_SET_BRIGHTNESS_MIN:
+#endif
+  case DISPLAY_MODE_SET_BRIGHTNESS_MAX:
+#endif
+    if (!btnDown.isButtonClosed())
+    {
+      checkUDbtn(btnUp);
+    }
+    if (!btnUp.isButtonClosed())
+    {
+      checkUDbtn(btnDown);
+    }
     break;
 #ifdef USE_TEMP_DATA
   case DISPLAY_MODE_SHOW_TEMP:
@@ -351,6 +382,12 @@ void returnToDefMode()
   case DISPLAY_MODE_SET_ALARM_MINUTE:
   case DISPLAY_MODE_ALARM_ON_OFF:
 #endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+#ifdef USE_LIGHT_SENSOR
+  case DISPLAY_MODE_SET_BRIGHTNESS_MIN:
+#endif
+  case DISPLAY_MODE_SET_BRIGHTNESS_MAX:
+#endif
     btnSet.setBtnFlag(BTN_FLAG_EXIT);
     break;
 #ifdef USE_TEMP_DATA
@@ -371,9 +408,9 @@ void returnToDefMode()
   tasks.stopTask(return_to_default_mode);
 }
 
-void stopSettintg()
+void stopSetting(shHandle task)
 {
-  tasks.stopTask(set_time_mode);
+  tasks.stopTask(task);
   tasks.stopTask(return_to_default_mode);
 }
 
@@ -443,12 +480,15 @@ void showTimeSetting()
       {
       case DISPLAY_MODE_SET_HOUR:
       case DISPLAY_MODE_SET_MINUTE:
-        saveTime(curHour, curMinute);
+        clock.setHour(curHour);
+        clock.setMinute(curMinute);
+        clock.setSecond(0);
         break;
 #ifdef USE_CALENDAR
       case DISPLAY_MODE_SET_DAY:
       case DISPLAY_MODE_SET_MONTH:
-        saveDate(curHour, curMinute);
+        clock.setDate(curHour);
+        clock.setMonth(curMinute);
         break;
       case DISPLAY_MODE_SET_YEAR:
         clock.setYear(curMinute);
@@ -482,24 +522,24 @@ void showTimeSetting()
       case DISPLAY_MODE_SET_ALARM_HOUR:
 #endif
         displayMode = DisplayMode(byte(displayMode + 1));
-        stopSettintg();
+        stopSetting(set_time_mode);
         break;
 #ifdef USE_ALARM
       case DISPLAY_MODE_ALARM_ON_OFF:
         displayMode = (curHour) ? DISPLAY_MODE_SET_ALARM_HOUR : DISPLAY_MODE_SHOW_TIME;
-        stopSettintg();
+        stopSetting(set_time_mode);
         break;
 #endif
       default:
         displayMode = DISPLAY_MODE_SHOW_TIME;
-        stopSettintg();
+        stopSetting(set_time_mode);
         break;
       }
     }
     else
     {
       displayMode = DISPLAY_MODE_SHOW_TIME;
-      stopSettintg();
+      stopSetting(set_time_mode);
     }
     btnSet.setBtnFlag(BTN_FLAG_NONE);
   }
@@ -603,25 +643,16 @@ void showCalendar()
     n = 0;
   }
 
-  byte d = 0;
-  byte m = 0;
-  if (n < 10)
-  {
-    d = curTime.day();
-    m = curTime.month();
-  }
-  else
-  {
-    d = 20;
-    m = curTime.year() % 100;
-  }
-#ifdef MAX72XX_MATRIX_DISPLAY
-  disp.showTime(d, m, (n < 10), true);
+  byte d = (n) ? 20 : curTime.day();
+  byte m = (n) ? curTime.year() % 100 : curTime.month();
+
+#if defined(MAX72XX_MATRIX_DISPLAY)
+  disp.showTime(d, m, (n < 1), true);
 #else
-  disp.showTime(d, m, (n < 10));
+  disp.showTime(d, m, (n < 1));
 #endif
 
-  if (n++ >= 20)
+  if (n++ >= 2)
   {
     returnToDefMode();
   }
@@ -687,16 +718,107 @@ void runAlarmBuzzer()
 #ifdef USE_LIGHT_SENSOR
 void setBrightness()
 {
+#ifdef USE_SET_BRIGHTNESS_MODE
+  if (tasks.getTaskState(set_brightness_mode))
+  {
+    return; // в режиме настройки яркости ничего не регулировать
+  }
+#endif
+
   static uint16_t b;
   b = (b * 2 + analogRead(LIGHT_SENSOR_PIN)) / 3;
   if (b < LIGHT_THRESHOLD)
   {
-    disp.setBrightness(MIN_DISPLAY_BRIGHTNESS);
+    disp.setBrightness(EEPROM.read(MIN_BRIGHTNESS_VALUE));
   }
   else if (b > LIGHT_THRESHOLD + 50)
   {
-    disp.setBrightness(MAX_DISPLAY_BRIGHTNESS);
+    disp.setBrightness(EEPROM.read(MAX_BRIGHTNESS_VALUE));
   }
+}
+#endif
+
+#ifdef USE_SET_BRIGHTNESS_MODE
+void showBrightnessSetting()
+{
+  static byte x = 0;
+
+  if (!tasks.getTaskState(set_brightness_mode))
+  {
+    tasks.startTask(set_brightness_mode);
+    tasks.startTask(return_to_default_mode);
+    x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
+#ifdef USE_LIGHT_SENSOR
+    if (displayMode == DISPLAY_MODE_SET_BRIGHTNESS_MIN)
+    {
+      x = EEPROM.read(MIN_BRIGHTNESS_VALUE);
+    }
+#endif
+  }
+
+  // ==== опрос кнопок ===============================
+  if (btnSet.getBtnFlag() > BTN_FLAG_NONE)
+  {
+    switch (displayMode)
+    {
+    case DISPLAY_MODE_SET_BRIGHTNESS_MAX:
+      EEPROM.update(MAX_BRIGHTNESS_VALUE, x);
+      displayMode = DISPLAY_MODE_SHOW_TIME;
+      stopSetting(set_brightness_mode);
+      break;
+#ifdef USE_LIGHT_SENSOR
+    case DISPLAY_MODE_SET_BRIGHTNESS_MIN:
+      EEPROM.update(MIN_BRIGHTNESS_VALUE, x);
+      if (btnSet.getBtnFlag() == BTN_FLAG_NEXT)
+      {
+        displayMode = DISPLAY_MODE_SET_BRIGHTNESS_MAX;
+      }
+      else
+        displayMode = DISPLAY_MODE_SHOW_TIME;
+      stopSetting(set_brightness_mode);
+      break;
+#endif
+    default:
+      break;
+    }
+    btnSet.setBtnFlag(BTN_FLAG_NONE);
+  }
+
+  if ((btnUp.getBtnFlag() == BTN_FLAG_NEXT) || (btnDown.getBtnFlag() == BTN_FLAG_NEXT))
+  {
+    bool dir = btnUp.getBtnFlag() == BTN_FLAG_NEXT;
+#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
+    checkData(x, 15, dir);
+#else
+    checkData(x, 7, dir, 1);
+#endif
+
+    btnUp.setBtnFlag(BTN_FLAG_NONE);
+    btnDown.setBtnFlag(BTN_FLAG_NONE);
+  }
+
+  // ==== вывод данных на экран ======================
+  disp.setBrightness(x);
+  byte y = 0;
+#if defined(TM1637_DISPLAY)
+  y = 0b01111100;
+#elif defined(MAX72XX_7SEGMENT_DISPLAY)
+  y = 0b00011111;
+#elif defined(MAX72XX_MATRIX_DISPLAY)
+  y = 0x12;
+#endif
+  disp.setDispData(0, y);
+  y = (displayMode == DISPLAY_MODE_SET_BRIGHTNESS_MAX) ? 2 : 1;
+#ifndef USE_LIGHT_SENSOR
+#ifdef MAX72XX_MATRIX_DISPLAY
+  y = 0x0A;
+#else
+  y = 0x00;
+#endif
+#endif
+  disp.setDispData(1, y);
+  disp.setDispData(2, x / 10);
+  disp.setDispData(3, x % 10);
 }
 #endif
 
@@ -781,22 +903,6 @@ void showAlarmState(byte _state)
 #endif
 
 // ===================================================
-void saveTime(byte hour, byte minute)
-{
-  clock.setHour(hour);
-  clock.setMinute(minute);
-  clock.setSecond(0);
-}
-
-#ifdef USE_CALENDAR
-void saveDate(byte day, byte month)
-{
-  clock.setDate(day);
-  clock.setMonth(month);
-}
-#endif
-
-// ===================================================
 void checkData(byte &dt, byte max, bool toUp, byte min)
 {
   (toUp) ? dt++ : dt--;
@@ -844,6 +950,17 @@ void setDisplay()
     }
     break;
 #endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+#ifdef USE_LIGHT_SENSOR
+  case DISPLAY_MODE_SET_BRIGHTNESS_MIN:
+#endif
+  case DISPLAY_MODE_SET_BRIGHTNESS_MAX:
+    if (!tasks.getTaskState(set_brightness_mode))
+    {
+      showBrightnessSetting();
+    }
+    break;
+#endif
   default:
     break;
   }
@@ -876,6 +993,23 @@ void setup()
 #if defined(USE_NTC)
   temp_sensor.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
 #endif
+// проверить корректность заданных уровней яркости
+byte x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
+#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
+  x = (x > 15) ? 15: x;
+#else
+  x = ((x > 7) || (x == 0)) ? 7 : x;
+#endif
+  EEPROM.update(MAX_BRIGHTNESS_VALUE, x);
+#ifdef USE_SET_BRIGHTNESS_MODE
+  x = EEPROM.read(MIN_BRIGHTNESS_VALUE);
+#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
+  x = (x > 15) ? 0 : x;
+#else
+  x = ((x > 7) || (x == 0)) ? 1 : x;
+#endif
+  EEPROM.update(MIN_BRIGHTNESS_VALUE, x);
+#endif
 
   // ==== задачи =====================================
   byte task_count = 5; // базовое количество задач
@@ -894,6 +1028,9 @@ void setup()
 #ifdef USE_ALARM
   task_count += 2;
 #endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+  task_count++;
+#endif
   tasks.init(task_count);
 
   rtc_guard = tasks.addTask(50, rtcNow);
@@ -907,7 +1044,7 @@ void setup()
 #endif
 #endif
 #ifdef USE_CALENDAR
-  show_calendar_mode = tasks.addTask(200, showCalendar, false);
+  show_calendar_mode = tasks.addTask(2000, showCalendar, false);
 #endif
 #ifdef USE_ALARM
   alarm_guard = tasks.addTask(200, checkAlarm);
@@ -917,7 +1054,10 @@ void setup()
 #ifdef USE_LIGHT_SENSOR
   light_sensor_guard = tasks.addTask(100, setBrightness);
 #else
-  disp.setBrightness(MAX_DISPLAY_BRIGHTNESS);
+  disp.setBrightness(EEPROM.read(MAX_BRIGHTNESS_VALUE));
+#endif
+#ifdef USE_SET_BRIGHTNESS_MODE
+  set_brightness_mode = tasks.addTask(100, showBrightnessSetting, false);
 #endif
 }
 

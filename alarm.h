@@ -26,8 +26,7 @@ private:
   uint16_t eeprom_index;
   AlarmState state;
 
-  uint8_t
-  read_eeprom_8(IndexOffset _index)
+  uint8_t read_eeprom_8(IndexOffset _index)
   {
     return (EEPROM.read(eeprom_index + _index));
   }
@@ -129,18 +128,18 @@ public:
    */
   uint16_t getAlarmPoint() { return (read_eeprom_16(ALARM_POINT)); }
 
-/**
- * @brief установка времени срабатывания будильника
- * 
- * @param _time время в минутах от начала суток
- */
+  /**
+   * @brief установка времени срабатывания будильника
+   *
+   * @param _time время в минутах от начала суток
+   */
   void setAlarmPoint(uint16_t _time) { write_eeprom_16(ALARM_POINT, _time); }
 
-/**
- * @brief проверка текущего состояния будильника
- * 
- * @param _time текущее время
- */
+  /**
+   * @brief проверка текущего состояния будильника
+   *
+   * @param _time текущее время
+   */
   void tick(DateTime _time)
   {
     setLed();

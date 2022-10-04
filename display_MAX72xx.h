@@ -162,14 +162,14 @@ public:
     }
   }
 
-/**
+  /**
    * @brief установка яркости экрана
    *
    * @param brightness значение яркости (1..7)
    */
   void setBrightness(byte brightness)
   {
-    brightness = map(brightness, 1, 7, 0, 15);
+    brightness = (brightness <= 15) ? brightness : 15;
     shMAX72xxMini<cs_pin, 1>::setBrightness(0, brightness);
   }
 };
@@ -195,7 +195,8 @@ const uint8_t PROGMEM font_digit[] = {
     0x7F, 0x88, 0x88, 0x88, 0x88, 0x7F, // A
     0xFF, 0x01, 0x01, 0x01, 0x01, 0x03, // L
     0x11, 0x0A, 0x04, 0x0A, 0x11, 0x00, // x
-    0x04, 0x02, 0x01, 0x06, 0x18, 0x20  // √
+    0x04, 0x02, 0x01, 0x06, 0x18, 0x20, // √
+    0xFE, 0x09, 0x11, 0x11, 0x11, 0x0E  // b
 };
 
 template <uint8_t cs_pin>
@@ -297,7 +298,7 @@ public:
 
   /**
    * @brief отрисовка на экране содержимого его буфера
-   * 
+   *
    */
   void show()
   {
@@ -382,14 +383,14 @@ public:
     }
   }
 
-/**
+  /**
    * @brief установка яркости экрана
    *
    * @param brightness значение яркости (1..7)
    */
   void setBrightness(byte brightness)
   {
-    brightness = map(brightness, 1, 7, 0, 15);
+    brightness = (brightness <= 15) ? brightness : 15;
     for (byte i = 0; i < 4; i++)
     {
       shMAX72xxMini<cs_pin, 4>::setBrightness(i, brightness);
