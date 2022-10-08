@@ -386,7 +386,7 @@ public:
   /**
    * @brief установка яркости экрана
    *
-   * @param brightness значение яркости (1..7)
+   * @param brightness значение яркости (0..15)
    */
   void setBrightness(byte brightness)
   {

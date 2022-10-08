@@ -9,6 +9,9 @@
 #include "display_TM1637.h"
 #elif defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
 #include "display_MAX72xx.h"
+#elif defined(WS2812_MATRIX_DISPLAY)
+#include <FastLED.h> // https://github.com/FastLED/FastLED
+#include "display_WS2812.h"
 #endif
 #ifdef USE_ALARM
 #include "alarm.h"
@@ -37,6 +40,9 @@ DisplayTM1637 disp(DISPLAY_CLK_PIN, DISPLAY_DAT_PIN);
 DisplayMAX72xx7segment<DISPLAY_CS_PIN> disp;
 #elif defined(MAX72XX_MATRIX_DISPLAY)
 DisplayMAX72xxMatrix<DISPLAY_CS_PIN> disp;
+#elif defined(WS2812_MATRIX_DISPLAY)
+CRGB leds[256];
+DisplayWS2812Matrix disp(leds, CRGB::Red, BY_COLUMNS);
 #endif
 
 DS3231 clock; // SDA - A4, SCL - A5
@@ -630,7 +636,14 @@ void showTemp()
 
 void setDisp()
 {
+#ifdef WS2812_MATRIX_DISPLAY
+  if (disp.show())
+  {
+    FastLED.show();
+  }
+#else
   disp.show();
+#endif
 }
 
 #ifdef USE_CALENDAR
@@ -646,7 +659,7 @@ void showCalendar()
   byte d = (n) ? 20 : curTime.day();
   byte m = (n) ? curTime.year() % 100 : curTime.month();
 
-#if defined(MAX72XX_MATRIX_DISPLAY)
+#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
   disp.showTime(d, m, (n < 1), true);
 #else
   disp.showTime(d, m, (n < 1));
@@ -727,14 +740,20 @@ void setBrightness()
 
   static uint16_t b;
   b = (b * 2 + analogRead(LIGHT_SENSOR_PIN)) / 3;
+  byte x = 1;
   if (b < LIGHT_THRESHOLD)
   {
-    disp.setBrightness(EEPROM.read(MIN_BRIGHTNESS_VALUE));
+    x = EEPROM.read(MIN_BRIGHTNESS_VALUE);
   }
   else if (b > LIGHT_THRESHOLD + 50)
   {
-    disp.setBrightness(EEPROM.read(MAX_BRIGHTNESS_VALUE));
+    x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
   }
+#if defined(WS2812_MATRIX_DISPLAY)
+  FastLED.setBrightness(x * 10);
+#else
+  disp.setBrightness(x);
+#endif
 }
 #endif
 
@@ -789,6 +808,8 @@ void showBrightnessSetting()
     bool dir = btnUp.getBtnFlag() == BTN_FLAG_NEXT;
 #if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
     checkData(x, 15, dir);
+#elif defined(WS2812_MATRIX_DISPLAY)
+    checkData(x, 25, dir, 1);
 #else
     checkData(x, 7, dir, 1);
 #endif
@@ -798,19 +819,23 @@ void showBrightnessSetting()
   }
 
   // ==== вывод данных на экран ======================
+#if defined(WS2812_MATRIX_DISPLAY)
+  FastLED.setBrightness(x * 10);
+#elif
   disp.setBrightness(x);
+#endif
   byte y = 0;
 #if defined(TM1637_DISPLAY)
   y = 0b01111100;
 #elif defined(MAX72XX_7SEGMENT_DISPLAY)
   y = 0b00011111;
-#elif defined(MAX72XX_MATRIX_DISPLAY)
+#elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
   y = 0x12;
 #endif
   disp.setDispData(0, y);
   y = (displayMode == DISPLAY_MODE_SET_BRIGHTNESS_MAX) ? 2 : 1;
 #ifndef USE_LIGHT_SENSOR
-#ifdef MAX72XX_MATRIX_DISPLAY
+#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
   y = 0x0A;
 #else
   y = 0x00;
@@ -827,6 +852,9 @@ void showBrightnessSetting()
     disp.setDispData(1, y);
     disp.setDispData(2, x / 10);
     disp.setDispData(3, x % 10);
+#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
+    disp.setDispData(4, 4);
+#endif
   }
 #endif
 }
@@ -864,7 +892,8 @@ void showTimeData(byte hour, byte minute)
     }
   }
 
-#if defined(USE_CALENDAR) && defined(MAX72XX_MATRIX_DISPLAY)
+#if defined(USE_CALENDAR) && (defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY))
+
   bool toDate = false;
   toDate = (displayMode >= DISPLAY_MODE_SET_DAY && displayMode <= DISPLAY_MODE_SET_YEAR);
   disp.showTime(hour, minute, false, toDate);
@@ -884,7 +913,7 @@ void showAlarmState(byte _state)
   disp.setDispData(0, 0b01110111); // "A"
   disp.setDispData(1, 0b10001110); // "L:"
   disp.setDispData(2, 0x00);
-#elif defined(MAX72XX_MATRIX_DISPLAY)
+#elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
   disp.setDispData(0, 0x0E); // "A"
   disp.setDispData(1, 0x0F); // "L:"
   disp.setDispData(2, 0x0A);
@@ -895,7 +924,7 @@ void showAlarmState(byte _state)
   {
 #if defined(TM1637_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
     disp.setDispData(3, 0x00);
-#elif defined(MAX72XX_MATRIX_DISPLAY)
+#elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
     disp.setDispData(3, 0x0A);
 #endif
   }
@@ -905,7 +934,7 @@ void showAlarmState(byte _state)
     disp.setDispData(3, (_state) ? 0b01011100 : 0b00001000);
 #elif defined(MAX72XX_7SEGMENT_DISPLAY)
     disp.setDispData(3, (_state) ? 0b00011101 : 0b00001000);
-#elif defined(MAX72XX_MATRIX_DISPLAY)
+#elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
     disp.setDispData(3, (_state) ? 0x11 : 0x10);
 #endif
   }
@@ -991,7 +1020,36 @@ void setup()
   btnDown.setIntervalOfSerial(100);
 
 // ==== экраны =======================================
-#if defined(MAX72XX_MATRIX_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
+#if defined(WS2812_MATRIX_DISPLAY)
+  // Раскомментируйте/отредактируйте одну из следующих строк для используемой вами матрицы
+  // FastLED.addLeds<TM1803, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<TM1804, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<TM1809, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<WS2811, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<WS2812, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  FastLED.addLeds<WS2812B, DISPLAY_DIN_PIN, GRB>(leds, 256);
+  // FastLED.addLeds<NEOPIXEL, DISPLAY_DIN_PIN>(leds, 256);
+  // FastLED.addLeds<APA104, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<UCS1903, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<UCS1903B, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<GW6205, DISPLAY_DIN_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<GW6205_400, DISPLAY_DIN_PIN, RGB>(leds, 256);
+
+  // FastLED.addLeds<WS2801, RGB>(leds, 256);
+  // FastLED.addLeds<SM16716, RGB>(leds, 256);
+  // FastLED.addLeds<LPD8806, RGB>(leds, 256);
+  // FastLED.addLeds<P9813, RGB>(leds, 256);
+  // FastLED.addLeds<APA102, RGB>(leds, 256);
+  // FastLED.addLeds<DOTSTAR, RGB>(leds, 256);
+
+  // FastLED.addLeds<WS2801, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<SM16716, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<LPD8806, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<P9813, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<APA102, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
+  // FastLED.addLeds<DOTSTAR, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
+
+#elif defined(MAX72XX_MATRIX_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
   disp.shutdownAllDevices(false);
 #ifdef MAX72XX_MATRIX_DISPLAY
   disp.setDirection(2); // задайте нужный вам поворот картинки (0-3)
@@ -1007,6 +1065,8 @@ void setup()
   byte x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
 #if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
   x = (x > 15) ? 15 : x;
+#elif defined(WS2812_MATRIX_DISPLAY)
+  x = (x > 25) ? 25 : x;
 #else
   x = ((x > 7) || (x == 0)) ? 7 : x;
 #endif
@@ -1015,6 +1075,8 @@ void setup()
   x = EEPROM.read(MIN_BRIGHTNESS_VALUE);
 #if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
   x = (x > 15) ? 0 : x;
+#elif defined(WS2812_MATRIX_DISPLAY)
+  x = ((x > 25) || (x == 0)) ? 1 : x;
 #else
   x = ((x > 7) || (x == 0)) ? 1 : x;
 #endif
@@ -1061,8 +1123,10 @@ void setup()
   alarm_buzzer = tasks.addTask(50, runAlarmBuzzer, false);
 #endif
   display_guard = tasks.addTask(50, setDisp);
-#ifdef USE_LIGHT_SENSOR
+#if defined(USE_LIGHT_SENSOR)
   light_sensor_guard = tasks.addTask(100, setBrightness);
+#elif defined(WS2812_MATRIX_DISPLAY)
+  FastLED.setBrightness(EEPROM.read(MAX_BRIGHTNESS_VALUE) * 10);
 #else
   disp.setBrightness(EEPROM.read(MAX_BRIGHTNESS_VALUE));
 #endif

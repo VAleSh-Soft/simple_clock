@@ -9,6 +9,7 @@
 #define TM1637_DISPLAY // использовать семисегментный экран на драйвере TM1637
 // #define MAX72XX_7SEGMENT_DISPLAY // использовать семисегментный экран на драйвере MAX7219 или MAX7221, четыре цифры
 // #define MAX72XX_MATRIX_DISPLAY // использовать матричный экран на драйвере MAX7219 или MAX7221 и четырех матрицах 8х8 светодиодов
+// #define WS2812_MATRIX_DISPLAY // использовать матричный экран 8х32 на базе адресных светодиодов
 
 // ==== календарь ====================================
 
@@ -51,6 +52,9 @@
 #define DISPLAY_CLK_PIN 13 // пин для подключения экрана - CLK (не менять!!!)
 #define DISPLAY_DIN_PIN 11 // пин для подключения экрана - DAT (не менять!!!)
 #define DISPLAY_CS_PIN 10  // пин для подключения экрана - CS
+#elif defined(WS2812_MATRIX_DISPLAY)
+#define DISPLAY_CLK_PIN 11 // пин для подключения экрана - CLK (для четырехпроводных схем)
+#define DISPLAY_DIN_PIN 10 // пин для подключения экрана - DIN
 #endif
 
 #ifdef USE_ALARM
