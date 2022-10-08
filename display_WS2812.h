@@ -29,16 +29,25 @@ const uint8_t PROGMEM font_digit[] = {
 };
 
 /**
- * @brief тип матрицы
- *
+ * @brief тип матрицы по расположению светодиодов
  */
 enum MatrixType : uint8_t
 {
-  //                                        _   _
-  BY_COLUMNS, // светодиоды расположены по столбцам: |_| |_| |
-              //                                      _______
-  BY_LINE     // светодиоды расположены построчно:    _______|
-              //                                     |_______
+  /**
+   * @brief светодиоды расположены по столбцам:
+   *    _   _ 
+   * | | | | |
+   * |_| |_| |                                             
+   * 
+   */
+  BY_COLUMNS,  
+  /**
+   * @brief светодиоды расположены построчно: 
+   *  ________
+   *  ________|
+   * |________
+   */
+  BY_LINE                                     
 };
 
 class DisplayWS2812Matrix
@@ -72,7 +81,7 @@ private:
     }
   }
 
-  void setSegments(byte *data)
+  void setSegments()
   {
     for (uint16_t i = 0; i < 256; i++)
     {
@@ -119,6 +128,13 @@ private:
   }
 
 public:
+/**
+ * @brief конструктор
+ * 
+ * @param _leds массив светодиодов
+ * @param _color цвет
+ * @param _type тип матрицы, собрана по столбцам или построчно
+ */
   DisplayWS2812Matrix(CRGB *_leds, CRGB _color, MatrixType _type)
   {
     leds = _leds;
@@ -147,7 +163,7 @@ public:
   void sleep()
   {
     clear();
-    setSegments(data);
+    setSegments();
   }
 
   /**
@@ -198,7 +214,7 @@ public:
       {
         _data[i] = data[i];
       }
-      setSegments(data);
+      setSegments();
     }
 
     return (flag);
