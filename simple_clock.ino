@@ -349,27 +349,28 @@ void rtcNow()
   curTime = RTC.now();
   if (displayMode == DISPLAY_MODE_SHOW_TIME)
   {
+#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
+    disp.showTime(curTime.hour(), curTime.minute(), curTime.second(), blink_flag);
+#else
     disp.showTime(curTime.hour(), curTime.minute(), blink_flag);
+#endif
   }
 }
 
 void blink()
 {
-  if (!tasks.getTaskState(blink_timer))
+  static byte cur_sec = curTime.second();
+  static uint32_t tmr = 0;
+  if (cur_sec != curTime.second())
   {
-    tasks.startTask(blink_timer);
+    cur_sec = curTime.second();
+    blink_flag = true;
+    tmr = millis();
+  }
+  else if (blink_flag && millis() - tmr >= 500)
+  {
     blink_flag = false;
   }
-  else
-  {
-    blink_flag = !blink_flag;
-  }
-}
-
-void restartBlink()
-{
-  tasks.stopTask(blink_timer);
-  blink();
 }
 
 void returnToDefMode()
@@ -433,7 +434,6 @@ void showTimeSetting()
   {
     tasks.startTask(set_time_mode);
     tasks.startTask(return_to_default_mode);
-    restartBlink();
     switch (displayMode)
     {
 #ifdef USE_ALARM
@@ -660,7 +660,7 @@ void showCalendar()
   byte m = (n) ? curTime.year() % 100 : curTime.month();
 
 #if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-  disp.showTime(d, m, (n < 1), true);
+  disp.showTime(d, m, 0, (n < 1), true);
 #else
   disp.showTime(d, m, (n < 1));
 #endif
@@ -821,7 +821,7 @@ void showBrightnessSetting()
   // ==== вывод данных на экран ======================
 #if defined(WS2812_MATRIX_DISPLAY)
   FastLED.setBrightness(x * 10);
-#elif
+#else
   disp.setBrightness(x);
 #endif
   byte y = 0;
@@ -892,11 +892,12 @@ void showTimeData(byte hour, byte minute)
     }
   }
 
-#if defined(USE_CALENDAR) && (defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY))
-
   bool toDate = false;
+#if defined(USE_CALENDAR)
   toDate = (displayMode >= DISPLAY_MODE_SET_DAY && displayMode <= DISPLAY_MODE_SET_YEAR);
-  disp.showTime(hour, minute, false, toDate);
+#endif
+#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
+  disp.showTime(hour, minute, 0, false, toDate);
 #else
   disp.showTime(hour, minute, false);
 #endif
@@ -1057,6 +1058,10 @@ void setup()
 #endif
 #endif
 
+#if (defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)) && defined(SHOW_SECOND_COLUMN)
+  disp.setSowSecondColumn(true);
+#endif
+
 // ==== датчики ======================================
 #if defined(USE_NTC)
   temp_sensor.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
@@ -1106,7 +1111,7 @@ void setup()
   tasks.init(task_count);
 
   rtc_guard = tasks.addTask(50, rtcNow);
-  blink_timer = tasks.addTask(500, blink);
+  blink_timer = tasks.addTask(50, blink);
   return_to_default_mode = tasks.addTask(AUTO_EXIT_TIMEOUT * 1000ul, returnToDefMode, false);
   set_time_mode = tasks.addTask(100, showTimeSetting, false);
 #ifdef USE_TEMP_DATA

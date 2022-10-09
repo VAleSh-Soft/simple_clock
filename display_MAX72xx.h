@@ -203,7 +203,8 @@ template <uint8_t cs_pin>
 class DisplayMAX72xxMatrix : public shMAX72xxMini<cs_pin, 4>
 {
 private:
-  byte data[5];
+  byte data[6];
+  bool show_sec_col = false;
 
   void setSegments(byte *data)
   {
@@ -242,6 +243,10 @@ private:
       shMAX72xxMini<cs_pin, 4>::setColumn(1, 7, 0b00000001);
       break;
     }
+    if (show_sec_col)
+    {
+      setColumn(3, 7, data[5]);
+    }
 
     shMAX72xxMini<cs_pin, 4>::update();
   }
@@ -259,6 +264,18 @@ public:
     {
       data[i] = 0x0a; // пустой символ в массиве идет под индексом 10
     }
+    data[4] = 0x00;
+    data[5] = 0x00;
+  }
+
+/**
+ * @brief включение режима показа секундного столбца
+ * 
+ * @param flag флаг состояния опции
+ */
+  void setSowSecondColumn(bool flag)
+  {
+    show_sec_col = flag;
   }
 
   /**
@@ -274,12 +291,12 @@ public:
   /**
    * @brief установка разряда _index буфера экрана
    *
-   * @param _index индекс разряда (0..3)
+   * @param _index индекс разряда (0..5)
    * @param _data данные для установки
    */
   void setDispData(byte _index, byte _data)
   {
-    if (_index < 5)
+    if (_index < 6)
     {
       data[_index] = _data;
     }
@@ -293,7 +310,7 @@ public:
    */
   byte getDispData(byte _index)
   {
-    return ((_index < 5) ? data[_index] : 0);
+    return ((_index < 6) ? data[_index] : 0);
   }
 
   /**
@@ -303,8 +320,8 @@ public:
   void show()
   {
     bool flag = false;
-    static byte _data[5] = {0x00, 0x00, 0x00, 0x00, 0x00};
-    for (byte i = 0; i < 5; i++)
+    static byte _data[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    for (byte i = 0; i < 6; i++)
     {
       flag = _data[i] != data[i];
       if (flag)
@@ -315,7 +332,7 @@ public:
     // отрисовка экрана происходит только если изменился хотя бы один разряд
     if (flag)
     {
-      for (byte i = 0; i < 5; i++)
+      for (byte i = 0; i < 6; i++)
       {
         _data[i] = data[i];
       }
@@ -328,9 +345,11 @@ public:
    *
    * @param hour часы
    * @param minute минуты
+   * @param second секунды
    * @param show_colon отображать или нет двоеточие между часами и минутами
+   * @param date флаг, показывающий, что выводится дата, а не время
    */
-  void showTime(int8_t hour, int8_t minute, bool show_colon, bool date = false)
+  void showTime(int8_t hour, int8_t minute, uint8_t second, bool show_colon, bool date = false)
   {
     clear();
     if (hour >= 0)
@@ -344,6 +363,27 @@ public:
       data[3] = minute % 10;
     }
     data[4] = (date) ? (byte)show_colon + 3 : show_colon;
+
+    // формирование секундного столбца
+    if (show_sec_col)
+    {
+      byte col_sec = 0;
+      byte x = second / 5;
+      for (byte i = 0; i < x; i++)
+      {
+        if (i < 6)
+        { // нарастание снизу вверх
+          col_sec += 1;
+          col_sec = col_sec << 1;
+        }
+        else
+        { // убывание снизу вверх
+          col_sec = col_sec << 1;
+          col_sec &= ~(1 << 7);
+        }
+      }
+      data[5] = col_sec;
+    }
   }
 
   /**

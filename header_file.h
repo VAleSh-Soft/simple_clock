@@ -34,6 +34,11 @@
 // #define USE_NTC     // использовать для вывода температуры NTC термистор
 #endif
 
+// ==== разное =======================================
+#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
+// #define SHOW_SECOND_COLUMN // на матричных экранах показывать на правом краю экрана световой столбец, отображающий количество текущих секунд в минуте
+#endif
+
 // ===================================================
 
 // ==== пины =========================================
@@ -126,7 +131,6 @@ void checkUpDownButton();
 // ==== задачи =======================================
 void rtcNow();
 void blink();
-void restartBlink();
 void returnToDefMode();
 void showTimeSetting();
 void setDisp();
