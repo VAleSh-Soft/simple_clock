@@ -1,29 +1,32 @@
 #pragma once
+#include "matrix_data.h"
 #include <Arduino.h>
 #include <avr/pgmspace.h>
 #include <shMAX72xxMini.h> // https://github.com/VAleSh-Soft/shMAX72xxMini
 
 // ==== класс для 7-сегментного индикатора MAX72xx ===
 
+#define NUM_DIGITS 8
+
 template <uint8_t cs_pin>
-class DisplayMAX72xx7segment : public shMAX72xx7Segment<cs_pin, 1, 4>
+class DisplayMAX72xx7segment : public shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>
 {
 private:
   byte data[4];
 
   void setSegments(byte *data)
   {
-    shMAX72xx7Segment<cs_pin, 1, 4>::clearAllDevices();
+    shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::clearAllDevices();
     for (byte i = 0; i < 4; i++)
     {
-      shMAX72xx7Segment<cs_pin, 1, 4>::setChar(i, data[i]);
+      shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::setChar(7 - i, data[i]);
     }
 
-    shMAX72xx7Segment<cs_pin, 1, 4>::update();
+    shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::update();
   }
 
 public:
-  DisplayMAX72xx7segment() : shMAX72xx7Segment<cs_pin, 1, 4>() { clear(); }
+  DisplayMAX72xx7segment() : shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>() { clear(); }
 
   /**
    * @brief очистка буфера экрана, сам экран при этом не очищается
@@ -44,7 +47,7 @@ public:
   void sleep()
   {
     clear();
-    shMAX72xx7Segment<cs_pin, 1, 4>::clearAllDevices(true);
+    shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::clearAllDevices(true);
   }
 
   /**
@@ -111,13 +114,13 @@ public:
     clear();
     if (hour >= 0)
     {
-      data[0] = shMAX72xx7Segment<cs_pin, 1, 4>::encodeDigit(hour / 10);
-      data[1] = shMAX72xx7Segment<cs_pin, 1, 4>::encodeDigit(hour % 10);
+      data[0] = shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::encodeDigit(hour / 10);
+      data[1] = shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::encodeDigit(hour % 10);
     }
     if (minute >= 0)
     {
-      data[2] = shMAX72xx7Segment<cs_pin, 1, 4>::encodeDigit(minute / 10);
-      data[3] = shMAX72xx7Segment<cs_pin, 1, 4>::encodeDigit(minute % 10);
+      data[2] = shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::encodeDigit(minute / 10);
+      data[3] = shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::encodeDigit(minute % 10);
     }
     if (show_colon)
     {
@@ -156,9 +159,9 @@ public:
         { // если температура ниже -9, переместить минус на крайнюю левую позицию
           data[0] = minusSegments;
         }
-        data[1] = shMAX72xx7Segment<cs_pin, 1, 4>::encodeDigit(temp / 10);
+        data[1] = shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::encodeDigit(temp / 10);
       }
-      data[2] = shMAX72xx7Segment<cs_pin, 1, 4>::encodeDigit(temp % 10);
+      data[2] = shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::encodeDigit(temp % 10);
     }
   }
 
@@ -175,29 +178,6 @@ public:
 };
 
 // ==== класс для матрицы 8х8х4 MAX72xx ==============
-
-// цифры 6x8
-const uint8_t PROGMEM font_digit[] = {
-    0x7E, 0x85, 0x89, 0x91, 0xA1, 0x7E, // 0
-    0x00, 0x00, 0x41, 0xFF, 0x01, 0x00, // 1
-    0x43, 0x85, 0x89, 0x89, 0x89, 0x73, // 2
-    0x42, 0x81, 0x91, 0x91, 0x91, 0x6E, // 3
-    0x0C, 0x14, 0x24, 0x44, 0x84, 0xFF, // 4
-    0xF2, 0xA1, 0xA1, 0xA1, 0xA1, 0x9E, // 5
-    0x7E, 0x91, 0x91, 0x91, 0x91, 0x4E, // 6
-    0xC0, 0x80, 0x87, 0x88, 0x90, 0xE0, // 7
-    0x6E, 0x91, 0x91, 0x91, 0x91, 0x6E, // 8
-    0x72, 0x89, 0x89, 0x89, 0x89, 0x7E, // 9
-    0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // space
-    0x00, 0x08, 0x08, 0x08, 0x08, 0x08, // -
-    0x00, 0x08, 0x08, 0x3E, 0x08, 0x08, // +
-    0xA0, 0x40, 0x1E, 0x21, 0x21, 0x12, // grad
-    0x7F, 0x88, 0x88, 0x88, 0x88, 0x7F, // A
-    0xFF, 0x01, 0x01, 0x01, 0x01, 0x03, // L
-    0x11, 0x0A, 0x04, 0x0A, 0x11, 0x00, // x
-    0x04, 0x02, 0x01, 0x06, 0x18, 0x20, // √
-    0xFE, 0x09, 0x11, 0x11, 0x11, 0x0E  // b
-};
 
 template <uint8_t cs_pin>
 class DisplayMAX72xxMatrix : public shMAX72xxMini<cs_pin, 4>
@@ -268,11 +248,11 @@ public:
     data[5] = 0x00;
   }
 
-/**
- * @brief включение режима показа секундного столбца
- * 
- * @param flag флаг состояния опции
- */
+  /**
+   * @brief включение режима показа секундного столбца
+   *
+   * @param flag флаг состояния опции
+   */
   void setSowSecondColumn(bool flag)
   {
     show_sec_col = flag;
