@@ -1059,7 +1059,7 @@ void setup()
 #endif
 
 #if (defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)) && defined(SHOW_SECOND_COLUMN)
-  disp.setSowSecondColumn(true);
+  disp.setShowSecondColumn(true);
 #endif
 
 // ==== датчики ======================================

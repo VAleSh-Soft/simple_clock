@@ -253,7 +253,7 @@ public:
    *
    * @param flag флаг состояния опции
    */
-  void setSowSecondColumn(bool flag)
+  void setShowSecondColumn(bool flag)
   {
     show_sec_col = flag;
   }
