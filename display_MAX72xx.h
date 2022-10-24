@@ -2,6 +2,7 @@
 #include "matrix_data.h"
 #include <Arduino.h>
 #include <avr/pgmspace.h>
+#include <DS3231.h>        // https://github.com/NorthernWidget/DS3231
 #include <shMAX72xxMini.h> // https://github.com/VAleSh-Soft/shMAX72xxMini
 
 // ==== класс для 7-сегментного индикатора MAX72xx ===
@@ -166,6 +167,61 @@ public:
   }
 
   /**
+   * @brief вывод на экран даты
+   *
+   * @param date текущая дата
+   * @param upd сбросить параметры и запустить заново
+   * @return true если вывод завершен
+   */
+  bool showDate(DateTime date, bool upd = false)
+  {
+    static byte n = 0;
+    bool result = false;
+
+    if (upd)
+    {
+      n = 0;
+      return (result);
+    }
+
+    clear();
+
+    switch (n)
+    {
+    case 0:
+      showTime(date.day(), date.month(), true);
+      break;
+    case 1:
+      showTime(20, date.year() % 100, false);
+      break;
+    }
+
+    result = (n++ >= 2);
+
+    return (result);
+  }
+
+  /**
+   * @brief вывод на экран данных по настройке яркости экрана
+   *
+   * @param br величина яркости
+   * @param toSensor используется или нет датчик освещенности
+   * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
+   */
+  void showBrightnessData(byte br, bool toSensor = false, bool toMin = false)
+  {
+    clear();
+    data[0] = 0b00011111;
+    if (toSensor)
+    {
+      data[1] = (toMin) ? encodeDigit(0) : encodeDigit(1);
+    }
+    data[1] |= 0x80; // для показа двоеточия установить старший бит во второй цифре
+    data[2] = encodeDigit(br / 10);
+    data[3] = encodeDigit(br % 10);
+  }
+
+  /**
    * @brief установка яркости экрана
    *
    * @param brightness значение яркости (1..7)
@@ -183,69 +239,105 @@ template <uint8_t cs_pin>
 class DisplayMAX72xxMatrix : public shMAX72xxMini<cs_pin, 4>
 {
 private:
-  byte data[6];
   bool show_sec_col = false;
 
-  void setSegments(byte *data)
+  void setNum(byte offset, byte num,
+              byte width = 6, byte space = 1,
+              byte *_data = NULL, byte _data_count = 0)
   {
-    shMAX72xxMini<cs_pin, 4>::clearAllDevices();
-    for (byte i = 0; i < 4; i++)
+    setChar(offset, num / 10, 6, _data, _data_count);
+    setChar(offset + width + space, num % 10, 6, _data, _data_count);
+  }
+
+#ifdef USE_TICKER_FOR_DATE
+  byte getOffset(byte index)
+  {
+    static const byte PROGMEM offset[] = {1, 17, 48, 72, 90, 108, 124, 157, 173};
+
+    return (pgm_read_byte(&offset[index]));
+  }
+
+  void getDateString(byte *_data, byte _data_count, DateTime date)
+  {
+    for (byte i = 0; i < _data_count; i++)
     {
-      byte offset;
-      switch (data[4])
-      {
-      case 2:
-        offset = (i == 3) ? 0 : 2 - i; // для температуры отступы цифр - 2, 1, 0, 0
-        break;
-      case 3:
-        offset = 1;
-        break;
-      default:
-        offset = 1 - i % 2; // иначе - 1, 0, 1, 0
-        break;
-      }
-      for (byte j = 0; j < 6; j++)
-      {
-        shMAX72xxMini<cs_pin, 4>::setColumn(i,
-                                            j + offset,
-                                            pgm_read_byte(&font_digit[data[i] * 6 + j]));
-      }
-    }
-    switch (data[4])
-    {
-    case 1: // отрисовка двоеточия
-      shMAX72xxMini<cs_pin, 4>::setColumn(1, 7, 0b00100100);
-      break;
-    case 2: // дорисовка значка градуса
-      shMAX72xxMini<cs_pin, 4>::setColumn(2, 7, 0b01000000);
-      break;
-    case 4: // отрисовка точки в дате
-      shMAX72xxMini<cs_pin, 4>::setColumn(1, 7, 0b00000001);
-      break;
-    }
-    if (show_sec_col)
-    {
-      setColumn(3, 7, data[5]);
+      _data[i] = 0x00;
     }
 
-    shMAX72xxMini<cs_pin, 4>::update();
+    // формирование строки времени
+    setNum(getOffset(0), date.hour(), 6, 1, _data, _data_count);
+    _data[getOffset(0) + 14] = 0x24; // двоеточие
+    setNum(getOffset(1), date.minute(), 6, 1, _data, _data_count);
+
+    // формирование строки дня недели
+    uint8_t dow = getDayOfWeek(date.day(), date.month(), date.year());
+    for (byte j = 0; j < 3; j++)
+    {
+      setChar(getOffset(2) + j * 7,
+              pgm_read_byte(&day_of_week[dow * 3 + j]), 5, _data, _data_count);
+    }
+
+    // формирование строки даты
+    setNum(getOffset(3), date.day(), 6, 2, _data, _data_count);
+    _data[getOffset(3) + 15] = 0x01; // точка
+    setNum(getOffset(4), date.month(), 6, 2, _data, _data_count);
+    _data[getOffset(4) + 15] = 0x01; // точка
+    setNum(getOffset(5), 20, 6, 2, _data, _data_count);
+    setNum(getOffset(6), date.year() % 100, 6, 2, _data, _data_count);
+
+    // формирование строки времени
+    setNum(getOffset(7), date.hour(), 6, 1, _data, _data_count);
+    _data[getOffset(7) + 14] = 0x24; // двоеточие
+    setNum(getOffset(8), date.minute(), 6, 1, _data, _data_count);
+  }
+#endif
+
+  void setChar(byte offset, byte chr,
+               byte width = 6, byte *_arr = NULL, byte _arr_length = 0)
+  {
+    for (byte j = offset, i = 0; i < width; j++, i++)
+    {
+      byte chr_data = 0;
+      switch (width)
+      {
+      case 5:
+        chr_data = reverseByte(pgm_read_byte(&font_5_7[chr * width + i]));
+        break;
+      case 6:
+        chr_data = pgm_read_byte(&font_digit[chr * width + i]);
+        break;
+      default:
+        break;
+      }
+
+      if (_arr != NULL)
+      {
+        if (j < _arr_length)
+        {
+          _arr[j] = chr_data;
+        }
+      }
+      else
+      {
+        if (j < 32)
+        {
+          shMAX72xxMini<cs_pin, 4>::setColumn(j / 8, j % 8, chr_data);
+        }
+      }
+    }
   }
 
 public:
   DisplayMAX72xxMatrix() : shMAX72xxMini<cs_pin, 4>() { clear(); }
 
   /**
-   * @brief очистка буфера экрана, сам экран при этом не очищается
+   * @brief очистка экрана
    *
+   * @param upd при false очищается только буфер экрана, при true - очищается и сам экран
    */
-  void clear()
+  void clear(bool upd = false)
   {
-    for (byte i = 0; i < 4; i++)
-    {
-      data[i] = 0x0a; // пустой символ в массиве идет под индексом 10
-    }
-    data[4] = 0x00;
-    data[5] = 0x00;
+    shMAX72xxMini<cs_pin, 4>::clearAllDevices(upd);
   }
 
   /**
@@ -259,38 +351,26 @@ public:
   }
 
   /**
-   * @brief очистка экрана
+   * @brief запись символа в буфера экрана
    *
+   * @param offset индекс столбца, с которого начинается отрисовка символа (0..31)
+   * @param chr символ для записи
+   * @param width ширина символа, может иметь значение 5 или 6, определяет, какой набор символов будет использован: 5х7 (для текста) или 6х8 (для вывода цифр)
    */
-  void sleep()
+  void setDispData(byte offset, byte chr, byte width = 6)
   {
-    clear();
-    shMAX72xxMini<cs_pin, 4>::clearAllDevices(true);
+    setChar(offset, chr, width);
   }
 
   /**
-   * @brief установка разряда _index буфера экрана
+   * @brief вывести двоеточие в середине экрана
    *
-   * @param _index индекс разряда (0..5)
-   * @param _data данные для установки
+   * @param toDot вместо двоеточия вывести точку
    */
-  void setDispData(byte _index, byte _data)
+  void setColon(bool toDot = false)
   {
-    if (_index < 6)
-    {
-      data[_index] = _data;
-    }
-  }
-
-  /**
-   * @brief получение значения разряда _index буфера экрана
-   *
-   * @param _index индекс разряда (0..3)
-   * @return byte
-   */
-  byte getDispData(byte _index)
-  {
-    return ((_index < 6) ? data[_index] : 0);
+    (toDot) ? shMAX72xxMini<cs_pin, 4>::setColumn(1, 7, 0b00000001)
+            : shMAX72xxMini<cs_pin, 4>::setColumn(1, 7, 0b00100100);
   }
 
   /**
@@ -299,25 +379,7 @@ public:
    */
   void show()
   {
-    bool flag = false;
-    static byte _data[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    for (byte i = 0; i < 6; i++)
-    {
-      flag = _data[i] != data[i];
-      if (flag)
-      {
-        break;
-      }
-    }
-    // отрисовка экрана происходит только если изменился хотя бы один разряд
-    if (flag)
-    {
-      for (byte i = 0; i < 6; i++)
-      {
-        _data[i] = data[i];
-      }
-      setSegments(data);
-    }
+    shMAX72xxMini<cs_pin, 4>::update();
   }
 
   /**
@@ -334,15 +396,18 @@ public:
     clear();
     if (hour >= 0)
     {
-      data[0] = hour / 10;
-      data[1] = hour % 10;
+      setChar(1, hour / 10);
+      setChar(8, hour % 10);
     }
     if (minute >= 0)
     {
-      data[2] = minute / 10;
-      data[3] = minute % 10;
+      setChar(17, minute / 10);
+      setChar(24, minute % 10);
     }
-    data[4] = (date) ? (byte)show_colon + 3 : show_colon;
+    if (show_colon)
+    {
+      setColon(date);
+    }
 
     // формирование секундного столбца
     if (show_sec_col)
@@ -362,7 +427,7 @@ public:
           col_sec &= ~(1 << 7);
         }
       }
-      data[5] = col_sec;
+      shMAX72xxMini<cs_pin, 4>::setColumn(3, 7, col_sec);
     }
   }
 
@@ -374,33 +439,141 @@ public:
   void showTemp(int temp)
   {
     clear();
-    data[3] = 0x0D;
-    data[4] = 2;
-    // сформировать впереди плюс или минус
-    data[1] = (temp < 0) ? 0x0B : 0x0C;
-    if (temp < 0)
-    {
-      temp = -temp;
-    }
     // если температура выходит за диапазон, сформировать строку минусов
-    if (temp > 99)
+    if (temp > 99 || temp < -99)
     {
       for (byte i = 0; i < 4; i++)
       {
-        data[i] = 0x0B;
+        setChar(3 + i * 7, 0x2D, 5);
       }
-      data[4] = 3;
     }
     else
     {
+      bool plus = temp > 0;
+      byte plus_pos = 7;
+      if (temp < 0)
+      {
+        temp = -temp;
+      }
+      setChar(14, temp % 10);
       if (temp > 9)
       {
-        // если температура двухзначная, переместить знак в первую позицию
-        data[0] = data[1];
-        data[1] = temp / 10;
+        // если температура двухзначная, переместить знак на позицию левее
+        plus_pos = 1;
+        setChar(7, temp / 10);
       }
-      data[2] = temp % 10;
+      // сформировать впереди плюс или минус
+      if (temp != 0)
+      {
+        (plus) ? setChar(plus_pos, 0x2B, 5) : setChar(plus_pos, 0x2D, 5);
+      }
+      // сформировать в конце знак градуса Цельсия
+      setChar(21, 0xB0, 5);
+      setChar(26, 0x43, 5);
     }
+  }
+
+  /**
+   * @brief вывод на экран даты
+   *
+   * @param date текущая дата
+   * @param upd сбросить параметры и запустить заново
+   * @return true если вывод завершен
+   */
+  bool showDate(DateTime date, bool upd = false)
+  {
+    static byte n = 0;
+    bool result = false;
+
+    if (upd)
+    {
+#ifdef USE_TICKER_FOR_DATE
+      n = 32;
+#else
+      n = 0;
+#endif
+      return (result);
+    }
+    shMAX72xxMini<cs_pin, 4>::clearAllDevices();
+
+// бегущая строка
+#ifdef USE_TICKER_FOR_DATE
+    byte date_str[190];
+    getDateString(date_str, 190, date);
+
+    for (byte i = 32, j = n; i > 0, j > 0; i--, j--)
+    {
+      shMAX72xxMini<cs_pin, 4>::setColumn((i - 1) / 8, (i - 1) % 8, date_str[j - 1]);
+    }
+// последовательный вывод - день недели, число и месяц, год
+#else
+    switch (n)
+    {
+    case 0:
+      uint8_t dow;
+      dow = getDayOfWeek(date.day(), date.month(), date.year());
+      for (byte j = 0; j < 3; j++)
+      {
+        setChar(7 + j * 7, pgm_read_byte(&day_of_week[dow * 3 + j]), 5);
+      }
+      break;
+    case 1:
+      setNum(1, date.day());
+      setColon(true); // точка
+      setNum(17, date.month());
+      break;
+    case 2:
+      setNum(1, 20, 6, 2);
+      setNum(17, date.year() % 100, 6, 2);
+      break;
+    }
+#endif
+
+    shMAX72xxMini<cs_pin, 4>::update();
+
+#ifdef USE_TICKER_FOR_DATE
+    result = (n++ >= 188);
+#else
+    result = (n++ >= 3);
+#endif
+
+    return (result);
+  }
+
+  /**
+   * @brief вывод на экран данных по настройке яркости экрана
+   *
+   * @param br величина яркости
+   * @param toSensor используется или нет датчик освещенности
+   * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
+   */
+  void showBrightnessData(byte br, bool toSensor = false, bool toMin = false)
+  {
+    shMAX72xxMini<cs_pin, 4>::clearAllDevices();
+
+#ifdef USE_RU_LANGUAGE
+    setChar(0, 0xDF, 5); // Я
+    setChar(6, 0xF0, 5); // р
+    byte x = 0xEA;       // к
+    if (toSensor)
+    {
+      x = (toMin) ? 0 : 1;
+      x += 0x30;
+    }
+    setChar(12, x, 5);
+#else
+    setChar(0, 0x42, 5); // B
+    setChar(6, 0x72, 5); // r
+    if (toSensor)
+    {
+      byte x = (toMin) ? 0 : 1;
+      x += 0x30;
+      setChar(12, x, 5);
+    }
+#endif
+    shMAX72xxMini<cs_pin, 4>::setColumn(2, 2, 0b00100100);
+    setChar(20, br / 10 + 0x30, 5);
+    setChar(26, br % 10 + 0x30, 5);
   }
 
   /**

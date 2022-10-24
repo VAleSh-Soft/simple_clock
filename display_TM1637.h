@@ -1,5 +1,6 @@
 #pragma once
 #include <Arduino.h>
+#include <DS3231.h>        // https://github.com/NorthernWidget/DS3231
 #include <TM1637Display.h> // https://github.com/avishorp/TM1637
 
 // ==== класс для вывода данных на экран =============
@@ -17,7 +18,7 @@ public:
 
   /**
    * @brief очистка буфера экрана, сам экран при этом не очищается
-   * 
+   *
    */
   void clear()
   {
@@ -29,7 +30,7 @@ public:
 
   /**
    * @brief очистка экрана
-   * 
+   *
    */
   void sleep()
   {
@@ -39,7 +40,7 @@ public:
 
   /**
    * @brief установка разряда _index буфера экрана
-   * 
+   *
    * @param _index разряд буфера
    * @param _data данные для установки
    */
@@ -53,9 +54,9 @@ public:
 
   /**
    * @brief получение значения разряда _index буфера экрана
-   * 
+   *
    * @param _index разряд буфера
-   * @return byte 
+   * @return byte
    */
   byte getDispData(byte _index)
   {
@@ -64,7 +65,7 @@ public:
 
   /**
    * @brief отрисовка на экране содержимого его буфера
-   * 
+   *
    */
   void show()
   {
@@ -156,6 +157,62 @@ public:
       }
       data[2] = TM1637Display::encodeDigit(temp % 10);
     }
+  }
+
+  /**
+   * @brief вывод на экран даты
+   *
+   * @param date текущая дата
+   * @param upd сбросить параметры и запустить заново
+   * @return true если вывод завершен
+   */
+  bool showDate(DateTime date, bool upd = false)
+  {
+    static byte n = 0;
+    bool result = false;
+
+    if (upd)
+    {
+      n = 0;
+      return (result);
+    }
+
+    clear();
+
+    switch (n)
+    {
+    case 0:
+      showTime(date.day(), date.month(), true);
+      break;
+    case 1:
+      showTime(20, date.year() % 100, false);
+      break;
+    }
+
+    result = (n++ >= 2);
+
+    return (result);
+  }
+
+  /**
+   * @brief вывод на экран данных по настройке яркости экрана
+   *
+   * @param br величина яркости
+   * @param toSensor используется или нет датчик освещенности
+   * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
+   */
+  void showBrightnessData(byte br, bool toSensor = false, bool toMin = false)
+  {
+    clear();
+    data[0] = 0b01111100;
+    if (toSensor)
+    {
+      data[1] = (toMin) ? encodeDigit(0) : encodeDigit(1);
+    }
+    data[1] |= 0x80; // для показа двоеточия установить старший бит во второй цифре
+
+    data[2] = encodeDigit(br / 10);
+    data[3] = encodeDigit(br % 10);
   }
 
   /**

@@ -495,6 +495,7 @@ void showTimeSetting()
       case DISPLAY_MODE_SET_MONTH:
         clock.setDate(curHour);
         clock.setMonth(curMinute);
+        rtcNow();
         break;
       case DISPLAY_MODE_SET_YEAR:
         clock.setYear(curMinute);
@@ -649,23 +650,13 @@ void setDisp()
 #ifdef USE_CALENDAR
 void showCalendar()
 {
-  static byte n = 0;
   if (!tasks.getTaskState(show_calendar_mode))
   {
     tasks.startTask(show_calendar_mode);
-    n = 0;
+    disp.showDate(curTime, true);
   }
 
-  byte d = (n) ? 20 : curTime.day();
-  byte m = (n) ? curTime.year() % 100 : curTime.month();
-
-#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-  disp.showTime(d, m, 0, (n < 1), true);
-#else
-  disp.showTime(d, m, (n < 1));
-#endif
-
-  if (n++ >= 2)
+  if (disp.showDate(curTime))
   {
     returnToDefMode();
   }
@@ -807,11 +798,11 @@ void showBrightnessSetting()
   {
     bool dir = btnUp.getBtnFlag() == BTN_FLAG_NEXT;
 #if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
-    checkData(x, 15, dir);
+    checkData(x, 15, dir, 0, false);
 #elif defined(WS2812_MATRIX_DISPLAY)
-    checkData(x, 25, dir, 1);
+    checkData(x, 25, dir, 1, false);
 #else
-    checkData(x, 7, dir, 1);
+    checkData(x, 7, dir, 1, false);
 #endif
 
     btnUp.setBtnFlag(BTN_FLAG_NONE);
@@ -824,39 +815,11 @@ void showBrightnessSetting()
 #else
   disp.setBrightness(x);
 #endif
-  byte y = 0;
-#if defined(TM1637_DISPLAY)
-  y = 0b01111100;
-#elif defined(MAX72XX_7SEGMENT_DISPLAY)
-  y = 0b00011111;
-#elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-  y = 0x12;
+  bool snr = false;
+#ifdef USE_LIGHT_SENSOR
+  snr = true;
 #endif
-  disp.setDispData(0, y);
-  y = (displayMode == DISPLAY_MODE_SET_BRIGHTNESS_MAX) ? 2 : 1;
-#ifndef USE_LIGHT_SENSOR
-#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-  y = 0x0A;
-#else
-  y = 0x00;
-#endif
-#endif
-#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(TM1637_DISPLAY)
-  {
-    disp.setDispData(1, disp.encodeDigit(y));
-    disp.setDispData(2, disp.encodeDigit(x / 10));
-    disp.setDispData(3, disp.encodeDigit(x % 10));
-  }
-#else
-  {
-    disp.setDispData(1, y);
-    disp.setDispData(2, x / 10);
-    disp.setDispData(3, x % 10);
-#if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-    disp.setDispData(4, 4);
-#endif
-  }
-#endif
+  disp.showBrightnessData(x, snr, displayMode != DISPLAY_MODE_SET_BRIGHTNESS_MAX);
 }
 #endif
 
@@ -897,7 +860,7 @@ void showTimeData(byte hour, byte minute)
   toDate = (displayMode >= DISPLAY_MODE_SET_DAY && displayMode <= DISPLAY_MODE_SET_YEAR);
 #endif
 #if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-  disp.showTime(hour, minute, 0, false, toDate);
+  disp.showTime(hour, minute, 0, displayMode != DISPLAY_MODE_SET_YEAR, toDate);
 #else
   disp.showTime(hour, minute, false);
 #endif
@@ -915,18 +878,23 @@ void showAlarmState(byte _state)
   disp.setDispData(1, 0b10001110); // "L:"
   disp.setDispData(2, 0x00);
 #elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-  disp.setDispData(0, 0x0E); // "A"
-  disp.setDispData(1, 0x0F); // "L:"
-  disp.setDispData(2, 0x0A);
-  disp.setDispData(4, 0x01); // ":"
+  disp.clear();
+#ifdef USE_RU_LANGUAGE
+  disp.setDispData(1, 0xC1, 5);  // "A"
+  disp.setDispData(7, 0xE4, 5);  // "l"
+  disp.setDispData(13, 0xEA, 5); // "r"
+#else
+  disp.setDispData(1, 0x41, 5);  // "A"
+  disp.setDispData(7, 0x6C, 5);  // "l"
+  disp.setDispData(13, 0x6D, 5); // "r"
+#endif
+  disp.setColumn(2, 5, 0b00100100);
 #endif
 
   if (!blink_flag && !btnUp.isButtonClosed() && !btnDown.isButtonClosed())
   {
 #if defined(TM1637_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
     disp.setDispData(3, 0x00);
-#elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-    disp.setDispData(3, 0x0A);
 #endif
   }
   else
@@ -936,19 +904,26 @@ void showAlarmState(byte _state)
 #elif defined(MAX72XX_7SEGMENT_DISPLAY)
     disp.setDispData(3, (_state) ? 0b00011101 : 0b00001000);
 #elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-    disp.setDispData(3, (_state) ? 0x11 : 0x10);
+    disp.setDispData(25, (_state) ? 0x0C : 0x0B);
 #endif
   }
 }
 #endif
 
 // ===================================================
-void checkData(byte &dt, byte max, bool toUp, byte min)
+void checkData(byte &dt, byte max, bool toUp, byte min, bool toLoop)
 {
   (toUp) ? dt++ : dt--;
   if ((dt > max) || (min > 0 && dt < min))
   {
-    dt = (toUp) ? min : max;
+    if (toLoop)
+    {
+      dt = (toUp) ? min : max;
+    }
+    else
+    {
+      dt = (toUp) ? max : min;
+    }
   }
 }
 
@@ -1121,7 +1096,12 @@ void setup()
 #endif
 #endif
 #ifdef USE_CALENDAR
-  show_calendar_mode = tasks.addTask(2000, showCalendar, false);
+#if (defined(WS2812_MATRIX_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)) && defined(USE_TICKER_FOR_DATE)
+  uint32_t t = 20;
+#else
+  uint32_t t = 1000;
+#endif
+  show_calendar_mode = tasks.addTask(t, showCalendar, false);
 #endif
 #ifdef USE_ALARM
   alarm_guard = tasks.addTask(200, checkAlarm);
