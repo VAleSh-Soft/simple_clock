@@ -6,6 +6,13 @@
 
 #define USE_TICKER_FOR_DATE // использовать вывод даты в виде бегущей строки
 
+#ifdef USE_TICKER_FOR_DATE
+#define TICKER_SPEED 50 // fps, скорость бегущей строки в кадрах в секунду; 
+#endif
+
+// #define SHOW_SECOND_COLUMN // на матричных экранах показывать на правом краю экрана световой столбец, отображающий количество текущих секунд в минуте
+
+
 // цифры 6x8
 static const uint8_t PROGMEM font_digit[] = {
     0x7E, 0x85, 0x89, 0x91, 0xA1, 0x7E, // 0 0x00

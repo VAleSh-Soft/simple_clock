@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <avr/pgmspace.h>
 #include <FastLED.h> // https://github.com/FastLED/FastLED
+#include <DS3231.h>  // https://github.com/NorthernWidget/DS3231
 
 // ==== класс для матрицы 8х32 адресных светодиодов ==
 
@@ -31,78 +32,108 @@ enum MatrixType : uint8_t
 class DisplayWS2812Matrix
 {
 private:
-  byte data[6];
   CRGB *leds = NULL;
-  byte seg_offset[4] = {0, 8, 16, 24};
   MatrixType matrix_type = BY_COLUMNS;
   byte row_count = 8;
   byte col_count = 32;
   CRGB color = CRGB::Red;
-  bool show_sec_col = false;
 
   byte getLedIndexOfStrip(byte row, byte col)
   {
+    byte result = 0;
     switch (matrix_type)
     {
     case BY_COLUMNS:
-      return (col * row_count + (((col >> 0) & 0x01) ? row_count - row - 1 : row));
+      result = col * row_count + (((col >> 0) & 0x01) ? row_count - row - 1 : row);
     case BY_LINE:
-      return (row * col_count + (((row >> 0) & 0x01) ? col_count - col - 1 : col));
+      result = row * col_count + (((row >> 0) & 0x01) ? col_count - col - 1 : col);
     }
+    return (result);
   }
 
-  void setColumn(byte col, byte data)
+  void setNum(byte offset, byte num,
+              byte width = 6, byte space = 1,
+              byte *_data = NULL, byte _data_count = 0)
   {
-    for (byte i = 0; i < 8; i++)
-    {
-      leds[getLedIndexOfStrip(i, col)] =
-          (((data) >> (7 - i)) & 0x01) ? color : CRGB::Black;
-    }
+    setChar(offset, num / 10, width, _data, _data_count);
+    setChar(offset + width + space, num % 10, width, _data, _data_count);
   }
 
-  void setSegments()
+#ifdef USE_TICKER_FOR_DATE
+  byte getOffset(byte index)
   {
-    for (uint16_t i = 0; i < 256; i++)
+    static const byte PROGMEM offset[] = {1, 17, 48, 72, 90, 108, 124, 157, 173};
+
+    return (pgm_read_byte(&offset[index]));
+  }
+
+  void getDateString(byte *_data, byte _data_count, DateTime date)
+  {
+    for (byte i = 0; i < _data_count; i++)
     {
-      leds[i] = CRGB::Black;
+      _data[i] = 0x00;
     }
 
-    for (byte i = 0; i < 4; i++)
+    // формирование строки времени
+    setNum(getOffset(0), date.hour(), 6, 1, _data, _data_count);
+    _data[getOffset(0) + 14] = 0x24; // двоеточие
+    setNum(getOffset(1), date.minute(), 6, 1, _data, _data_count);
+
+    // формирование строки дня недели
+    uint8_t dow = getDayOfWeek(date.day(), date.month(), date.year());
+    for (byte j = 0; j < 3; j++)
     {
-      byte offset;
-      switch (data[4])
+      setChar(getOffset(2) + j * 7,
+              pgm_read_byte(&day_of_week[dow * 3 + j]), 5, _data, _data_count);
+    }
+
+    // формирование строки даты
+    setNum(getOffset(3), date.day(), 6, 2, _data, _data_count);
+    _data[getOffset(3) + 15] = 0x01; // точка
+    setNum(getOffset(4), date.month(), 6, 2, _data, _data_count);
+    _data[getOffset(4) + 15] = 0x01; // точка
+    setNum(getOffset(5), 20, 6, 2, _data, _data_count);
+    setNum(getOffset(6), date.year() % 100, 6, 2, _data, _data_count);
+
+    // формирование строки времени
+    setNum(getOffset(7), date.hour(), 6, 1, _data, _data_count);
+    _data[getOffset(7) + 14] = 0x24; // двоеточие
+    setNum(getOffset(8), date.minute(), 6, 1, _data, _data_count);
+  }
+#endif
+
+  void setChar(byte offset, byte chr,
+               byte width = 6, byte *_arr = NULL, byte _arr_length = 0)
+  {
+    for (byte j = offset, i = 0; i < width; j++, i++)
+    {
+      byte chr_data = 0;
+      switch (width)
       {
-      case 2:
-        offset = (i == 3) ? 0 : 2 - i; // для температуры отступы цифр - 2, 1, 0, 0
+      case 5:
+        chr_data = reverseByte(pgm_read_byte(&font_5_7[chr * width + i]));
         break;
-      case 3:
-        offset = 1;
+      case 6:
+        chr_data = pgm_read_byte(&font_digit[chr * width + i]);
         break;
       default:
-        offset = 1 - i % 2; // иначе - 1, 0, 1, 0
         break;
       }
-      for (byte j = 0; j < 6; j++)
+
+      if (_arr != NULL)
       {
-        setColumn(seg_offset[i] + j + offset,
-                  pgm_read_byte(&font_digit[data[i] * 6 + j]));
+        if (j < _arr_length)
+        {
+          _arr[j] = chr_data;
+        }
       }
-    }
-    switch (data[4])
-    {
-    case 1: // отрисовка двоеточия
-      setColumn(seg_offset[1] + 7, 0b00100100);
-      break;
-    case 2: // дорисовка значка градуса
-      setColumn(seg_offset[2] + 7, 0b01000000);
-      break;
-    case 4: // отрисовка точки в дате
-      setColumn(seg_offset[1] + 7, 0b00000001);
-      break;
-    }
-    if (show_sec_col)
-    {
-      setColumn(31, data[5]);
+      else
+      {
+        if (j < 32)
+        {
+          setColumn(j, chr_data);
+        }
+      }
     }
   }
 
@@ -119,95 +150,76 @@ public:
     leds = _leds;
     color = _color;
     matrix_type = _type;
-    sleep();
+    clear(true);
+  }
+
+  /**
+   * @brief запись столбца в буфер экрана
+   *
+   * @param col столбец
+   * @param _data байт для записи
+   */
+  void setColumn(byte col, byte _data)
+  {
+    if (col < 32)
+    {
+      for (byte i = 0; i < 8; i++)
+      {
+        leds[getLedIndexOfStrip(i, col)] =
+            (((_data) >> (7 - i)) & 0x01) ? color : CRGB::Black;
+      }
+    }
   }
 
   /**
    * @brief очистка буфера экрана, сам экран при этом не очищается
    *
+   * @param upd при false очищается только буфер экрана, при true - очищается и сам экран
    */
-  void clear()
+  void clear(bool upd = false)
   {
-    for (byte i = 0; i < 4; i++)
+    for (byte i = 0; i < 32; i++)
     {
-      data[i] = 0x0a; // пустой символ в массиве идет под индексом 10
+      setColumn(i, 0x00);
     }
-    data[4] = 0x00;
-    data[5] = 0x00;
-  }
-
-/**
- * @brief включение режима показа секундного столбца
- * 
- * @param flag флаг состояния опции
- */
-  void setShowSecondColumn(bool flag)
-  {
-    show_sec_col = flag;
-  }
-
-  /**
-   * @brief очистка экрана
-   *
-   */
-  void sleep()
-  {
-    clear();
-    setSegments();
-  }
-
-  /**
-   * @brief установка разряда _index буфера экрана
-   *
-   * @param _index индекс разряда (0..5)
-   * @param _data данные для установки
-   */
-  void setDispData(byte _index, byte _data)
-  {
-    if (_index < 6)
+    if (upd)
     {
-      data[_index] = _data;
+      FastLED.show();
     }
   }
 
   /**
-   * @brief получение значения разряда _index буфера экрана
+   * @brief запись символа в буфера экрана
    *
-   * @param _index индекс разряда (0..3)
-   * @return byte
+   * @param offset индекс столбца, с которого начинается отрисовка символа (0..31)
+   * @param chr символ для записи
+   * @param width ширина символа, может иметь значение 5 или 6, определяет, какой набор символов будет использован: 5х7 (для текста) или 6х8 (для вывода цифр)
    */
-  byte getDispData(byte _index)
+  void setDispData(byte offset, byte chr, byte width = 6)
   {
-    return ((_index < 6) ? data[_index] : 0);
+    if (offset < 32)
+    {
+      setChar(offset, chr, width);
+    }
+  }
+
+  /**
+   * @brief вывести двоеточие в середине экрана
+   *
+   * @param toDot вместо двоеточия вывести точку
+   */
+  void setColon(bool toDot = false)
+  {
+    (toDot) ? setColumn(15, 0b00000001) : setColumn(15, 0b00100100);
   }
 
   /**
    * @brief отрисовка на экране содержимого его буфера
    *
    */
-  bool show()
+  void show()
   {
-    bool flag = false;
-    static byte _data[6] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    for (byte i = 0; i < 6; i++)
-    {
-      flag = _data[i] != data[i];
-      if (flag)
-      {
-        break;
-      }
-    }
-    // отрисовка экрана происходит только если изменился хотя бы один разряд
-    if (flag)
-    {
-      for (byte i = 0; i < 6; i++)
-      {
-        _data[i] = data[i];
-      }
-      setSegments();
-    }
-
-    return (flag);
+    FastLED.show();
   }
 
   /**
@@ -224,36 +236,38 @@ public:
     clear();
     if (hour >= 0)
     {
-      data[0] = hour / 10;
-      data[1] = hour % 10;
+      setChar(1, hour / 10);
+      setChar(8, hour % 10);
     }
     if (minute >= 0)
     {
-      data[2] = minute / 10;
-      data[3] = minute % 10;
+      setChar(17, minute / 10);
+      setChar(24, minute % 10);
     }
-    data[4] = (date) ? (byte)show_colon + 3 : show_colon;
-
-    // формирование секундного столбца
-    if (show_sec_col)
+    if (show_colon)
     {
-      byte col_sec = 0;
-      byte x = second / 5;
-      for (byte i = 0; i < x; i++)
-      {
-        if (i < 6)
-        { // нарастание снизу вверх
-          col_sec += 1;
-          col_sec = col_sec << 1;
-        }
-        else
-        { // убывание снизу вверх
-          col_sec = col_sec << 1;
-          col_sec &= ~(1 << 7);
-        }
-      }
-      data[5] = col_sec;
+      setColon(date);
     }
+
+#ifdef SHOW_SECOND_COLUMN
+    // формирование секундного столбца
+    byte col_sec = 0;
+    byte x = second / 5;
+    for (byte i = 0; i < x; i++)
+    {
+      if (i < 6)
+      { // нарастание снизу вверх
+        col_sec += 1;
+        col_sec = col_sec << 1;
+      }
+      else
+      { // убывание снизу вверх
+        col_sec = col_sec << 1;
+        col_sec &= ~(1 << 7);
+      }
+    }
+    setColumn(31, col_sec);
+#endif
   }
 
   /**
@@ -264,32 +278,140 @@ public:
   void showTemp(int temp)
   {
     clear();
-    data[3] = 0x0D;
-    data[4] = 2;
-    // сформировать впереди плюс или минус
-    data[1] = (temp < 0) ? 0x0B : 0x0C;
-    if (temp < 0)
-    {
-      temp = -temp;
-    }
     // если температура выходит за диапазон, сформировать строку минусов
-    if (temp > 99)
+    if (temp > 99 || temp < -99)
     {
       for (byte i = 0; i < 4; i++)
       {
-        data[i] = 0x0B;
+        setChar(3 + i * 7, 0x2D, 5);
       }
-      data[4] = 3;
     }
     else
     {
+      bool plus = temp > 0;
+      byte plus_pos = 7;
+      if (temp < 0)
+      {
+        temp = -temp;
+      }
+      setChar(14, temp % 10);
       if (temp > 9)
       {
-        // если температура двухзначная, переместить знак в первую позицию
-        data[0] = data[1];
-        data[1] = temp / 10;
+        // если температура двухзначная, переместить знак на позицию левее
+        plus_pos = 1;
+        setChar(7, temp / 10);
       }
-      data[2] = temp % 10;
+      // сформировать впереди плюс или минус
+      if (temp != 0)
+      {
+        (plus) ? setChar(plus_pos, 0x2B, 5) : setChar(plus_pos, 0x2D, 5);
+      }
+      // сформировать в конце знак градуса Цельсия
+      setChar(21, 0xB0, 5);
+      setChar(26, 0x43, 5);
     }
+  }
+
+  /**
+   * @brief вывод на экран даты
+   *
+   * @param date текущая дата
+   * @param upd сбросить параметры и запустить заново
+   * @return true если вывод завершен
+   */
+  bool showDate(DateTime date, bool upd = false)
+  {
+    static byte n = 0;
+    bool result = false;
+
+    if (upd)
+    {
+#ifdef USE_TICKER_FOR_DATE
+      n = 32;
+#else
+      n = 0;
+#endif
+      return (result);
+    }
+    clear();
+
+// бегущая строка
+#ifdef USE_TICKER_FOR_DATE
+    byte date_str[190];
+    getDateString(date_str, 190, date);
+
+    for (byte i = 32, j = n; i > 0, j > 0; i--, j--)
+    {
+      setColumn(i, date_str[j - 1]);
+    }
+// последовательный вывод - день недели, число и месяц, год
+#else
+    switch (n)
+    {
+    case 0:
+      uint8_t dow;
+      dow = getDayOfWeek(date.day(), date.month(), date.year());
+      for (byte j = 0; j < 3; j++)
+      {
+        setChar(7 + j * 7, pgm_read_byte(&day_of_week[dow * 3 + j]), 5);
+      }
+      break;
+    case 1:
+      setNum(1, date.day());
+      setColon(true); // точка
+      setNum(17, date.month());
+      break;
+    case 2:
+      setNum(1, 20, 6, 2);
+      setNum(17, date.year() % 100, 6, 2);
+      break;
+    }
+#endif
+
+    FastLED.show();
+
+#ifdef USE_TICKER_FOR_DATE
+    result = (n++ >= 188);
+#else
+    result = (n++ >= 3);
+#endif
+
+    return (result);
+  }
+
+  /**
+   * @brief вывод на экран данных по настройке яркости экрана
+   *
+   * @param br величина яркости
+   * @param toSensor используется или нет датчик освещенности
+   * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
+   */
+  void showBrightnessData(byte br, bool toSensor = false, bool toMin = false)
+  {
+    clear();
+
+#ifdef USE_RU_LANGUAGE
+    setChar(0, 0xDF, 5); // Я
+    setChar(6, 0xF0, 5); // р
+    byte x = 0xEA;       // к
+    if (toSensor)
+    {
+      x = (toMin) ? 0 : 1;
+      x += 0x30;
+    }
+    setChar(12, x, 5);
+#else
+    setChar(0, 0x42, 5); // B
+    setChar(6, 0x72, 5); // r
+    if (toSensor)
+    {
+      byte x = (toMin) ? 0 : 1;
+      x += 0x30;
+      setChar(12, x, 5);
+    }
+#endif
+    setColumn(18, 0b00100100);
+    setChar(20, br / 10 + 0x30, 5);
+    setChar(26, br % 10 + 0x30, 5);
   }
 };

@@ -637,14 +637,7 @@ void showTemp()
 
 void setDisp()
 {
-#ifdef WS2812_MATRIX_DISPLAY
-  if (disp.show())
-  {
-    FastLED.show();
-  }
-#else
   disp.show();
-#endif
 }
 
 #ifdef USE_CALENDAR
@@ -856,13 +849,15 @@ void showTimeData(byte hour, byte minute)
   }
 
   bool toDate = false;
+  bool toColon = false;
 #if defined(USE_CALENDAR)
   toDate = (displayMode >= DISPLAY_MODE_SET_DAY && displayMode <= DISPLAY_MODE_SET_YEAR);
+  toColon = displayMode != DISPLAY_MODE_SET_YEAR;
 #endif
 #if defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
-  disp.showTime(hour, minute, 0, displayMode != DISPLAY_MODE_SET_YEAR, toDate);
+  disp.showTime(hour, minute, 0, toColon, toDate);
 #else
-  disp.showTime(hour, minute, false);
+  disp.showTime(hour, minute, toColon);
 #endif
 }
 
@@ -880,15 +875,19 @@ void showAlarmState(byte _state)
 #elif defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)
   disp.clear();
 #ifdef USE_RU_LANGUAGE
-  disp.setDispData(1, 0xC1, 5);  // "A"
-  disp.setDispData(7, 0xE4, 5);  // "l"
-  disp.setDispData(13, 0xEA, 5); // "r"
+  disp.setDispData(1, 0xC1, 5);  // "Б"
+  disp.setDispData(7, 0xE4, 5);  // "д"
+  disp.setDispData(13, 0xEA, 5); // "к"
 #else
   disp.setDispData(1, 0x41, 5);  // "A"
   disp.setDispData(7, 0x6C, 5);  // "l"
   disp.setDispData(13, 0x6D, 5); // "r"
 #endif
+#ifdef MAX72XX_MATRIX_DISPLAY
   disp.setColumn(2, 5, 0b00100100);
+#else
+  disp.setColumn(21, 0b00100100);
+#endif
 #endif
 
   if (!blink_flag && !btnUp.isButtonClosed() && !btnDown.isButtonClosed())
@@ -995,6 +994,32 @@ void setup()
   btnDown.setLongClickMode(LCM_CLICKSERIES);
   btnDown.setIntervalOfSerial(100);
 
+// ==== датчики ======================================
+#if defined(USE_NTC)
+  temp_sensor.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
+#endif
+  // проверить корректность заданных уровней яркости
+  byte x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
+#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
+  x = (x > 15) ? 8 : x;
+#elif defined(WS2812_MATRIX_DISPLAY)
+  x = (x > 25) ? 15 : x;
+#else
+  x = ((x > 7) || (x == 0)) ? 7 : x;
+#endif
+  EEPROM.update(MAX_BRIGHTNESS_VALUE, x);
+#ifdef USE_LIGHT_SENSOR
+  x = EEPROM.read(MIN_BRIGHTNESS_VALUE);
+#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
+  x = (x > 15) ? 0 : x;
+#elif defined(WS2812_MATRIX_DISPLAY)
+  x = ((x > 25) || (x == 0)) ? 1 : x;
+#else
+  x = ((x > 7) || (x == 0)) ? 1 : x;
+#endif
+  EEPROM.update(MIN_BRIGHTNESS_VALUE, x);
+#endif
+
 // ==== экраны =======================================
 #if defined(WS2812_MATRIX_DISPLAY)
   // Раскомментируйте/отредактируйте одну из следующих строк для используемой вами матрицы
@@ -1025,42 +1050,14 @@ void setup()
   // FastLED.addLeds<APA102, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
   // FastLED.addLeds<DOTSTAR, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
 
+  FastLED.setBrightness(0); // чтобы не сверкало максимальной яркостью при включении
+
 #elif defined(MAX72XX_MATRIX_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
   disp.shutdownAllDevices(false);
 #ifdef MAX72XX_MATRIX_DISPLAY
   disp.setDirection(2); // задайте нужный вам поворот картинки (0-3)
   // disp.setFlip(true);   // раскомментируйте, если нужно включить отражение картинки по горизонтали
 #endif
-#endif
-
-#if (defined(MAX72XX_MATRIX_DISPLAY) || defined(WS2812_MATRIX_DISPLAY)) && defined(SHOW_SECOND_COLUMN)
-  disp.setShowSecondColumn(true);
-#endif
-
-// ==== датчики ======================================
-#if defined(USE_NTC)
-  temp_sensor.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
-#endif
-  // проверить корректность заданных уровней яркости
-  byte x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
-#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
-  x = (x > 15) ? 15 : x;
-#elif defined(WS2812_MATRIX_DISPLAY)
-  x = (x > 25) ? 25 : x;
-#else
-  x = ((x > 7) || (x == 0)) ? 7 : x;
-#endif
-  EEPROM.update(MAX_BRIGHTNESS_VALUE, x);
-#ifdef USE_SET_BRIGHTNESS_MODE
-  x = EEPROM.read(MIN_BRIGHTNESS_VALUE);
-#if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
-  x = (x > 15) ? 0 : x;
-#elif defined(WS2812_MATRIX_DISPLAY)
-  x = ((x > 25) || (x == 0)) ? 1 : x;
-#else
-  x = ((x > 7) || (x == 0)) ? 1 : x;
-#endif
-  EEPROM.update(MIN_BRIGHTNESS_VALUE, x);
 #endif
 
   // ==== задачи =====================================
@@ -1085,38 +1082,38 @@ void setup()
 #endif
   tasks.init(task_count);
 
-  rtc_guard = tasks.addTask(50, rtcNow);
-  blink_timer = tasks.addTask(50, blink);
+  rtc_guard = tasks.addTask(50ul, rtcNow);
+  blink_timer = tasks.addTask(50ul, blink);
   return_to_default_mode = tasks.addTask(AUTO_EXIT_TIMEOUT * 1000ul, returnToDefMode, false);
-  set_time_mode = tasks.addTask(100, showTimeSetting, false);
+  set_time_mode = tasks.addTask(100ul, showTimeSetting, false);
 #ifdef USE_TEMP_DATA
-  show_temp_mode = tasks.addTask(500, showTemp, false);
+  show_temp_mode = tasks.addTask(500ul, showTemp, false);
 #if defined(USE_DS18B20)
-  ds18b20_guard = tasks.addTask(3000, checkDS18b20);
+  ds18b20_guard = tasks.addTask(3000ul, checkDS18b20);
 #endif
 #endif
 #ifdef USE_CALENDAR
 #if (defined(WS2812_MATRIX_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)) && defined(USE_TICKER_FOR_DATE)
-  uint32_t t = 20;
+  uint32_t t = 1000ul / TICKER_SPEED;
 #else
-  uint32_t t = 1000;
+  uint32_t t = 1000ul;
 #endif
   show_calendar_mode = tasks.addTask(t, showCalendar, false);
 #endif
 #ifdef USE_ALARM
-  alarm_guard = tasks.addTask(200, checkAlarm);
-  alarm_buzzer = tasks.addTask(50, runAlarmBuzzer, false);
+  alarm_guard = tasks.addTask(200ul, checkAlarm);
+  alarm_buzzer = tasks.addTask(50ul, runAlarmBuzzer, false);
 #endif
-  display_guard = tasks.addTask(50, setDisp);
+  display_guard = tasks.addTask(50ul, setDisp);
 #if defined(USE_LIGHT_SENSOR)
-  light_sensor_guard = tasks.addTask(100, setBrightness);
+  light_sensor_guard = tasks.addTask(100ul, setBrightness);
 #elif defined(WS2812_MATRIX_DISPLAY)
   FastLED.setBrightness(EEPROM.read(MAX_BRIGHTNESS_VALUE) * 10);
 #else
   disp.setBrightness(EEPROM.read(MAX_BRIGHTNESS_VALUE));
 #endif
 #ifdef USE_SET_BRIGHTNESS_MODE
-  set_brightness_mode = tasks.addTask(100, showBrightnessSetting, false);
+  set_brightness_mode = tasks.addTask(100ul, showBrightnessSetting, false);
 #endif
 }
 

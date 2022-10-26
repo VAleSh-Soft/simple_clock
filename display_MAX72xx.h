@@ -239,14 +239,12 @@ template <uint8_t cs_pin>
 class DisplayMAX72xxMatrix : public shMAX72xxMini<cs_pin, 4>
 {
 private:
-  bool show_sec_col = false;
-
   void setNum(byte offset, byte num,
               byte width = 6, byte space = 1,
               byte *_data = NULL, byte _data_count = 0)
   {
-    setChar(offset, num / 10, 6, _data, _data_count);
-    setChar(offset + width + space, num % 10, 6, _data, _data_count);
+    setChar(offset, num / 10, width, _data, _data_count);
+    setChar(offset + width + space, num % 10, width, _data, _data_count);
   }
 
 #ifdef USE_TICKER_FOR_DATE
@@ -341,16 +339,6 @@ public:
   }
 
   /**
-   * @brief включение режима показа секундного столбца
-   *
-   * @param flag флаг состояния опции
-   */
-  void setShowSecondColumn(bool flag)
-  {
-    show_sec_col = flag;
-  }
-
-  /**
    * @brief запись символа в буфера экрана
    *
    * @param offset индекс столбца, с которого начинается отрисовка символа (0..31)
@@ -409,26 +397,25 @@ public:
       setColon(date);
     }
 
+#ifdef SHOW_SECOND_COLUMN
     // формирование секундного столбца
-    if (show_sec_col)
+    byte col_sec = 0;
+    byte x = second / 5;
+    for (byte i = 0; i < x; i++)
     {
-      byte col_sec = 0;
-      byte x = second / 5;
-      for (byte i = 0; i < x; i++)
-      {
-        if (i < 6)
-        { // нарастание снизу вверх
-          col_sec += 1;
-          col_sec = col_sec << 1;
-        }
-        else
-        { // убывание снизу вверх
-          col_sec = col_sec << 1;
-          col_sec &= ~(1 << 7);
-        }
+      if (i < 6)
+      { // нарастание снизу вверх
+        col_sec += 1;
+        col_sec = col_sec << 1;
       }
-      shMAX72xxMini<cs_pin, 4>::setColumn(3, 7, col_sec);
+      else
+      { // убывание снизу вверх
+        col_sec = col_sec << 1;
+        col_sec &= ~(1 << 7);
+      }
     }
+    setColumn(31, col_sec);
+#endif
   }
 
   /**
