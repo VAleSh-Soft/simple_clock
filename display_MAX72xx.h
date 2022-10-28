@@ -239,7 +239,7 @@ template <uint8_t cs_pin>
 class DisplayMAX72xxMatrix : public shMAX72xxMini<cs_pin, 4>
 {
 private:
-  void setNum(byte offset, byte num,
+  void setNumString(byte offset, byte num,
               byte width = 6, byte space = 1,
               byte *_data = NULL, byte _data_count = 0)
   {
@@ -247,12 +247,59 @@ private:
     setChar(offset + width + space, num % 10, width, _data, _data_count);
   }
 
+  void setDayOfWeakString(byte offset, DateTime date, byte *_data = NULL, byte _data_count = 0)
+  {
+    uint8_t dow = getDayOfWeek(date.day(), date.month(), date.year());
+    for (byte j = 0; j < 3; j++)
+    {
+      setChar(offset + j * 7,
+              pgm_read_byte(&day_of_week[dow * 3 + j]), 5, _data, _data_count);
+    }
+  }
+
+  void setTempString(byte offset, int16_t temp, byte *_data = NULL, byte _data_count = 0)
+  {
+    // если температура выходит за диапазон, сформировать строку минусов
+    if (temp > 99 || temp < -99)
+    {
+      for (byte i = 0; i < 4; i++)
+      {
+        setChar(offset + 2 + i * 7, 0x2D, 5, _data, _data_count);
+      }
+    }
+    else
+    {
+      bool plus = temp > 0;
+      byte plus_pos = offset + 6;
+      if (temp < 0)
+      {
+        temp = -temp;
+      }
+      setChar(offset + 13, temp % 10, 6, _data, _data_count);
+      if (temp > 9)
+      {
+        // если температура двухзначная, переместить знак на позицию левее
+        plus_pos = offset;
+        setChar(offset + 6, temp / 10, 6, _data, _data_count);
+      }
+      // сформировать впереди плюс или минус
+      if (temp != 0)
+      {
+        (plus) ? setChar(plus_pos, 0x2B, 5, _data, _data_count)
+               : setChar(plus_pos, 0x2D, 5, _data, _data_count);
+      }
+      // сформировать в конце знак градуса Цельсия
+      setChar(offset + 20, 0xB0, 5, _data, _data_count);
+      setChar(offset + 25, 0x43, 5, _data, _data_count);
+    }
+  }
+
 #ifdef USE_TICKER_FOR_DATE
   byte getOffset(byte index)
   {
     static const byte PROGMEM offset[] = {1, 17, 48, 72, 90, 108, 124, 157, 173};
 
-    return (pgm_read_byte(&offset[index]));
+    return ((index < 9) ? pgm_read_byte(&offset[index]) : 0);
   }
 
   void getDateString(byte *_data, byte _data_count, DateTime date)
@@ -263,30 +310,25 @@ private:
     }
 
     // формирование строки времени
-    setNum(getOffset(0), date.hour(), 6, 1, _data, _data_count);
+    setNumString(getOffset(0), date.hour(), 6, 1, _data, _data_count);
     _data[getOffset(0) + 14] = 0x24; // двоеточие
-    setNum(getOffset(1), date.minute(), 6, 1, _data, _data_count);
+    setNumString(getOffset(1), date.minute(), 6, 1, _data, _data_count);
 
     // формирование строки дня недели
-    uint8_t dow = getDayOfWeek(date.day(), date.month(), date.year());
-    for (byte j = 0; j < 3; j++)
-    {
-      setChar(getOffset(2) + j * 7,
-              pgm_read_byte(&day_of_week[dow * 3 + j]), 5, _data, _data_count);
-    }
+    setDayOfWeakString(getOffset(2), date, _data, _data_count);
 
     // формирование строки даты
-    setNum(getOffset(3), date.day(), 6, 2, _data, _data_count);
+    setNumString(getOffset(3), date.day(), 6, 2, _data, _data_count);
     _data[getOffset(3) + 15] = 0x01; // точка
-    setNum(getOffset(4), date.month(), 6, 2, _data, _data_count);
+    setNumString(getOffset(4), date.month(), 6, 2, _data, _data_count);
     _data[getOffset(4) + 15] = 0x01; // точка
-    setNum(getOffset(5), 20, 6, 2, _data, _data_count);
-    setNum(getOffset(6), date.year() % 100, 6, 2, _data, _data_count);
+    setNumString(getOffset(5), 20, 6, 2, _data, _data_count);
+    setNumString(getOffset(6), date.year() % 100, 6, 2, _data, _data_count);
 
     // формирование строки времени
-    setNum(getOffset(7), date.hour(), 6, 1, _data, _data_count);
+    setNumString(getOffset(7), date.hour(), 6, 1, _data, _data_count);
     _data[getOffset(7) + 14] = 0x24; // двоеточие
-    setNum(getOffset(8), date.minute(), 6, 1, _data, _data_count);
+    setNumString(getOffset(8), date.minute(), 6, 1, _data, _data_count);
   }
 #endif
 
@@ -384,13 +426,11 @@ public:
     clear();
     if (hour >= 0)
     {
-      setChar(1, hour / 10);
-      setChar(8, hour % 10);
+      setNumString(1, hour, 6, 1);
     }
     if (minute >= 0)
     {
-      setChar(17, minute / 10);
-      setChar(24, minute % 10);
+      setNumString(17, minute, 6, 1);
     }
     if (show_colon)
     {
@@ -426,38 +466,7 @@ public:
   void showTemp(int temp)
   {
     clear();
-    // если температура выходит за диапазон, сформировать строку минусов
-    if (temp > 99 || temp < -99)
-    {
-      for (byte i = 0; i < 4; i++)
-      {
-        setChar(3 + i * 7, 0x2D, 5);
-      }
-    }
-    else
-    {
-      bool plus = temp > 0;
-      byte plus_pos = 7;
-      if (temp < 0)
-      {
-        temp = -temp;
-      }
-      setChar(14, temp % 10);
-      if (temp > 9)
-      {
-        // если температура двухзначная, переместить знак на позицию левее
-        plus_pos = 1;
-        setChar(7, temp / 10);
-      }
-      // сформировать впереди плюс или минус
-      if (temp != 0)
-      {
-        (plus) ? setChar(plus_pos, 0x2B, 5) : setChar(plus_pos, 0x2D, 5);
-      }
-      // сформировать в конце знак градуса Цельсия
-      setChar(21, 0xB0, 5);
-      setChar(26, 0x43, 5);
-    }
+    setTempString(1, temp);
   }
 
   /**
@@ -497,21 +506,16 @@ public:
     switch (n)
     {
     case 0:
-      uint8_t dow;
-      dow = getDayOfWeek(date.day(), date.month(), date.year());
-      for (byte j = 0; j < 3; j++)
-      {
-        setChar(7 + j * 7, pgm_read_byte(&day_of_week[dow * 3 + j]), 5);
-      }
+      setDayOfWeakString(7, date);
       break;
     case 1:
-      setNum(1, date.day());
+      setNumString(1, date.day());
       setColon(true); // точка
-      setNum(17, date.month());
+      setNumString(17, date.month());
       break;
     case 2:
-      setNum(1, 20, 6, 2);
-      setNum(17, date.year() % 100, 6, 2);
+      setNumString(1, 20, 6, 2);
+      setNumString(17, date.year() % 100, 6, 2);
       break;
     }
 #endif
