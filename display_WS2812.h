@@ -45,8 +45,10 @@ private:
     {
     case BY_COLUMNS:
       result = col * row_count + (((col >> 0) & 0x01) ? row_count - row - 1 : row);
+      break;;
     case BY_LINE:
       result = row * col_count + (((row >> 0) & 0x01) ? col_count - col - 1 : col);
+      break;;
     }
     return (result);
   }
