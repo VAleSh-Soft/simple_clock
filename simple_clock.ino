@@ -808,7 +808,7 @@ void showBrightnessSetting()
 #else
   disp.setBrightness(x);
 #endif
-bool blink = !blink_flag && !btnUp.isButtonClosed() && !btnDown.isButtonClosed();
+  bool blink = !blink_flag && !btnUp.isButtonClosed() && !btnDown.isButtonClosed();
   bool snr = false;
 #ifdef USE_LIGHT_SENSOR
   snr = true;

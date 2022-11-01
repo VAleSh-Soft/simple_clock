@@ -210,6 +210,10 @@ public:
     {
       data[1] = (toMin) ? encodeDigit(0) : encodeDigit(1);
     }
+    else
+    {
+      data[1] = 0b01010000;
+    }
     data[1] |= 0x80; // для показа двоеточия установить старший бит во второй цифре
 
     if (!blink)
