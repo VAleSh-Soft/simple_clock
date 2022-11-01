@@ -808,11 +808,13 @@ void showBrightnessSetting()
 #else
   disp.setBrightness(x);
 #endif
+bool blink = !blink_flag && !btnUp.isButtonClosed() && !btnDown.isButtonClosed();
   bool snr = false;
 #ifdef USE_LIGHT_SENSOR
   snr = true;
 #endif
-  disp.showBrightnessData(x, snr, displayMode != DISPLAY_MODE_SET_BRIGHTNESS_MAX);
+  disp.showBrightnessData(x, blink, snr,
+                          displayMode != DISPLAY_MODE_SET_BRIGHTNESS_MAX);
 }
 #endif
 

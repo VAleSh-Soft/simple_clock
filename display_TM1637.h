@@ -198,10 +198,11 @@ public:
    * @brief вывод на экран данных по настройке яркости экрана
    *
    * @param br величина яркости
+   * @param blink используется для мигания изменяемого значения
    * @param toSensor используется или нет датчик освещенности
    * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
    */
-  void showBrightnessData(byte br, bool toSensor = false, bool toMin = false)
+  void showBrightnessData(byte br, bool blink, bool toSensor = false, bool toMin = false)
   {
     clear();
     data[0] = 0b01111100;
@@ -211,8 +212,11 @@ public:
     }
     data[1] |= 0x80; // для показа двоеточия установить старший бит во второй цифре
 
-    data[2] = encodeDigit(br / 10);
-    data[3] = encodeDigit(br % 10);
+    if (!blink)
+    {
+      data[2] = encodeDigit(br / 10);
+      data[3] = encodeDigit(br % 10);
+    }
   }
 
   /**

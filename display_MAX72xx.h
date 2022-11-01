@@ -205,10 +205,11 @@ public:
    * @brief вывод на экран данных по настройке яркости экрана
    *
    * @param br величина яркости
+   * @param blink используется для мигания изменяемого значения
    * @param toSensor используется или нет датчик освещенности
    * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
    */
-  void showBrightnessData(byte br, bool toSensor = false, bool toMin = false)
+  void showBrightnessData(byte br, bool blink, bool toSensor = false, bool toMin = false)
   {
     clear();
     data[0] = 0b00011111;
@@ -217,8 +218,11 @@ public:
       data[1] = (toMin) ? encodeDigit(0) : encodeDigit(1);
     }
     data[1] |= 0x80; // для показа двоеточия установить старший бит во второй цифре
-    data[2] = encodeDigit(br / 10);
-    data[3] = encodeDigit(br % 10);
+    if (!blink)
+    {
+      data[2] = encodeDigit(br / 10);
+      data[3] = encodeDigit(br % 10);
+    }
   }
 
   /**
@@ -240,8 +244,8 @@ class DisplayMAX72xxMatrix : public shMAX72xxMini<cs_pin, 4>
 {
 private:
   void setNumString(byte offset, byte num,
-              byte width = 6, byte space = 1,
-              byte *_data = NULL, byte _data_count = 0)
+                    byte width = 6, byte space = 1,
+                    byte *_data = NULL, byte _data_count = 0)
   {
     setChar(offset, num / 10, width, _data, _data_count);
     setChar(offset + width + space, num % 10, width, _data, _data_count);
@@ -535,10 +539,11 @@ public:
    * @brief вывод на экран данных по настройке яркости экрана
    *
    * @param br величина яркости
+   * @param blink используется для мигания изменяемого значения
    * @param toSensor используется или нет датчик освещенности
    * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
    */
-  void showBrightnessData(byte br, bool toSensor = false, bool toMin = false)
+  void showBrightnessData(byte br, bool blink, bool toSensor = false, bool toMin = false)
   {
     shMAX72xxMini<cs_pin, 4>::clearAllDevices();
 
@@ -563,8 +568,11 @@ public:
     }
 #endif
     shMAX72xxMini<cs_pin, 4>::setColumn(2, 2, 0b00100100);
-    setChar(20, br / 10 + 0x30, 5);
-    setChar(26, br % 10 + 0x30, 5);
+    if (!blink)
+    {
+      setChar(20, br / 10 + 0x30, 5);
+      setChar(26, br % 10 + 0x30, 5);
+    }
   }
 
   /**

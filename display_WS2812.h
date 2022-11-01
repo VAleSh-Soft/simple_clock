@@ -389,10 +389,11 @@ public:
    * @brief вывод на экран данных по настройке яркости экрана
    *
    * @param br величина яркости
+   * @param blink используется для мигания изменяемого значения
    * @param toSensor используется или нет датчик освещенности
    * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
    */
-  void showBrightnessData(byte br, bool toSensor = false, bool toMin = false)
+  void showBrightnessData(byte br, bool blink, bool toSensor = false, bool toMin = false)
   {
     clear();
 
@@ -402,8 +403,7 @@ public:
     byte x = 0xEA;       // к
     if (toSensor)
     {
-      x = (toMin) ? 0 : 1;
-      x += 0x30;
+      x = (toMin) ? 0 + 0x30 : 1 + 0x30;
     }
     setChar(12, x, 5);
 #else
@@ -417,7 +417,10 @@ public:
     }
 #endif
     setColumn(18, 0b00100100);
-    setChar(20, br / 10 + 0x30, 5);
-    setChar(26, br % 10 + 0x30, 5);
+    if (!blink)
+    {
+      setChar(20, br / 10 + 0x30, 5);
+      setChar(26, br % 10 + 0x30, 5);
+    }
   }
 };
