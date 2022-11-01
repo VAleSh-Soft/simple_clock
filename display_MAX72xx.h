@@ -305,7 +305,7 @@ private:
 #ifdef USE_TICKER_FOR_DATE
   byte getOffset(byte index)
   {
-    static const byte PROGMEM offset[] = {1, 17, 48, 82, 100, 118, 134, 167, 183};
+    static const byte PROGMEM offset[] = {1, 48, 82, 167};
 
     return ((index < 9) ? pgm_read_byte(&offset[index]) : 0);
   }
@@ -317,26 +317,30 @@ private:
       _data[i] = 0x00;
     }
 
+    byte offset = getOffset(0);
     // формирование строки времени
-    setNumString(getOffset(0), date.hour(), 6, 1, _data, _data_count);
-    _data[getOffset(0) + 14] = 0x24; // двоеточие
-    setNumString(getOffset(1), date.minute(), 6, 1, _data, _data_count);
+    setNumString(offset, date.hour(), 6, 1, _data, _data_count);
+    _data[offset + 14] = 0x24; // двоеточие
+    setNumString(offset + 16, date.minute(), 6, 1, _data, _data_count);
 
     // формирование строки дня недели
-    setDayOfWeakString(getOffset(2), date, _data, _data_count);
+    offset = getOffset(1);
+    setDayOfWeakString(offset, date, _data, _data_count);
 
     // формирование строки даты
-    setNumString(getOffset(3), date.day(), 6, 2, _data, _data_count);
-    _data[getOffset(3) + 15] = 0x01; // точка
-    setNumString(getOffset(4), date.month(), 6, 2, _data, _data_count);
-    _data[getOffset(4) + 15] = 0x01; // точка
-    setNumString(getOffset(5), 20, 6, 2, _data, _data_count);
-    setNumString(getOffset(6), date.year() % 100, 6, 2, _data, _data_count);
+    offset = getOffset(2);
+    setNumString(offset, date.day(), 6, 2, _data, _data_count);
+    _data[offset + 15] = 0x01; // точка
+    setNumString(offset + 18, date.month(), 6, 2, _data, _data_count);
+    _data[offset + 33] = 0x01; // точка
+    setNumString(offset + 36, 20, 6, 2, _data, _data_count);
+    setNumString(offset + 52, date.year() % 100, 6, 2, _data, _data_count);
 
     // формирование строки времени
-    setNumString(getOffset(7), date.hour(), 6, 1, _data, _data_count);
-    _data[getOffset(7) + 14] = 0x24; // двоеточие
-    setNumString(getOffset(8), date.minute(), 6, 1, _data, _data_count);
+    offset = getOffset(3);
+    setNumString(offset, date.hour(), 6, 1, _data, _data_count);
+    _data[offset + 14] = 0x24; // двоеточие
+    setNumString(offset + 16, date.minute(), 6, 1, _data, _data_count);
   }
 #endif
 
