@@ -111,7 +111,7 @@ private:
 #ifdef USE_TICKER_FOR_DATE
   byte getOffset(byte index)
   {
-    static const byte PROGMEM offset[] = {1, 17, 48, 72, 90, 108, 124, 157, 173};
+    static const byte PROGMEM offset[] = {1, 17, 48, 82, 100, 118, 134, 167, 183};
 
     return ((index < 9) ? pgm_read_byte(&offset[index]) : 0);
   }
@@ -348,8 +348,9 @@ public:
 
 // бегущая строка
 #ifdef USE_TICKER_FOR_DATE
-    byte date_str[190];
-    getDateString(date_str, 190, date);
+    byte str_len = 200;
+    byte date_str[str_len];
+    getDateString(date_str, str_len, date);
 
     for (byte i = 32, j = n; i > 0, j > 0; i--, j--)
     {
@@ -377,7 +378,7 @@ public:
     FastLED.show();
 
 #ifdef USE_TICKER_FOR_DATE
-    result = (n++ >= 188);
+    result = (n++ >= str_len - 2);
 #else
     result = (n++ >= 3);
 #endif
