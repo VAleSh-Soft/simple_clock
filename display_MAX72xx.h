@@ -510,7 +510,7 @@ public:
     byte date_str[str_len];
     getDateString(date_str, str_len, date);
 
-    for (byte i = 32, j = n; i > 0, j > 0; i--, j--)
+    for (byte i = 32, j = n; i > 0 && j > 0; i--, j--)
     {
       shMAX72xxMini<cs_pin, 4>::setColumn((i - 1) / 8, (i - 1) % 8, date_str[j - 1]);
     }

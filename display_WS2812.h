@@ -356,7 +356,7 @@ public:
     byte date_str[str_len];
     getDateString(date_str, str_len, date);
 
-    for (byte i = 32, j = n; i > 0, j > 0; i--, j--)
+    for (byte i = 32, j = n; i > 0 && j > 0; i--, j--)
     {
       setColumn(i, date_str[j - 1]);
     }
