@@ -83,7 +83,7 @@ public:
     }
     if (read_eeprom_16(ALARM_POINT) > MAX_DATA)
     {
-      write_eeprom_16(ALARM_POINT, 0);
+      write_eeprom_16(ALARM_POINT, 360);
     }
     state = (AlarmState)read_eeprom_8(ALARM_STATE);
   }

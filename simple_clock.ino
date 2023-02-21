@@ -1052,14 +1052,21 @@ void setup()
   // FastLED.addLeds<APA102, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
   // FastLED.addLeds<DOTSTAR, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
 
-  FastLED.setBrightness(0); // чтобы не сверкало максимальной яркостью при включении
-
 #elif defined(MAX72XX_MATRIX_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
   disp.shutdownAllDevices(false);
 #ifdef MAX72XX_MATRIX_DISPLAY
   disp.setDirection(2); // задайте нужный вам поворот картинки (0-3)
   // disp.setFlip(true);   // раскомментируйте, если нужно включить отражение картинки по горизонтали
 #endif
+#endif
+
+// выставить яркость в минимум, чтобы при включении не сверкало максимальной яркостью
+#if defined(WS2812_MATRIX_DISPLAY)
+  FastLED.setBrightness(0);
+#elif defined(MAX72XX_MATRIX_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
+  disp.setBrightness(0);
+#else
+  disp.setBrightness(1);
 #endif
 
   // ==== задачи =====================================
