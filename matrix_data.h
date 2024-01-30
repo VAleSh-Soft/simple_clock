@@ -331,7 +331,7 @@ uint8_t getDayOfWeek(uint8_t _day, uint8_t _month, uint16_t _year)
   uint8_t t2 = pgm_read_byte(&m[_month - 1]);
   // uint8_t t2 = m[_month - 1];
   // сделать поправку на високосный год, если нужно
-  if (_month < 3 && t1 % 4 == 0)
+  if (_month < 3 && y1 % 4 == 0)
   {
     t2--;
   }
