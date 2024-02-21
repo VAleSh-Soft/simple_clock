@@ -1,15 +1,16 @@
 #pragma once
 #include <Arduino.h>
-#include <DS3231.h>        // https://github.com/NorthernWidget/DS3231
+#include <DS3231.h>  // https://github.com/NorthernWidget/DS3231
+#include <FastLED.h> // https://github.com/FastLED/FastLED
 
 // =========== настройки компонентов часов ===========
 
 // === используемые экраны (использовать только один))
 
-#define TM1637_DISPLAY // использовать семисегментный экран на драйвере TM1637
+// #define TM1637_DISPLAY // использовать семисегментный экран на драйвере TM1637
 // #define MAX72XX_7SEGMENT_DISPLAY // использовать семисегментный экран на драйвере MAX7219 или MAX7221, четыре цифры
 // #define MAX72XX_MATRIX_DISPLAY // использовать матричный экран на драйвере MAX7219 или MAX7221 и четырех матрицах 8х8 светодиодов
-// #define WS2812_MATRIX_DISPLAY // использовать матричный экран 8х32 на базе адресных светодиодов
+#define WS2812_MATRIX_DISPLAY // использовать матричный экран 8х32 на базе адресных светодиодов
 
 // ==== календарь ====================================
 
@@ -53,8 +54,7 @@
 #define DISPLAY_DIN_PIN 11 // пин для подключения экрана - DAT (не менять!!!)
 #define DISPLAY_CS_PIN 10  // пин для подключения экрана - CS
 #elif defined(WS2812_MATRIX_DISPLAY)
-#define DISPLAY_CLK_PIN 11 // пин для подключения экрана - CLK (для четырехпроводных схем)
-#define DISPLAY_DIN_PIN 10 // пин для подключения экрана - DIN
+// пины для подключения адресных светодиодов настраиваются в файле setting_for_WS2812.h
 #endif
 
 #ifdef USE_ALARM
@@ -82,7 +82,7 @@
 #endif
 #define MAX_BRIGHTNESS_VALUE 99 // индекс в EEPROM для сохранения  максимального значение яркости экрана
 
-// ==== режимы экрана ================================
+// ==== работа с экраном =============================
 enum DisplayMode : uint8_t
 {
   DISPLAY_MODE_SHOW_TIME, // основной режим - вывод времени на индикатор

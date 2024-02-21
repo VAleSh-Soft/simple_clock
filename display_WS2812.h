@@ -4,6 +4,11 @@
 #include <avr/pgmspace.h>
 #include <FastLED.h> // https://github.com/FastLED/FastLED
 #include <DS3231.h>  // https://github.com/NorthernWidget/DS3231
+#include "setting_for_WS2812.h"
+
+// ===================================================
+
+#define __ESPICHIPSET__ defined CHIPSET_LPD6803 || defined CHIPSET_LPD8806 || defined CHIPSET_WS2801 || defined CHIPSET_WS2803 || defined CHIPSET_SM16716 || defined CHIPSET_P9813 || defined CHIPSET_APA102 || defined CHIPSET_SK9822 || defined CHIPSET_DOTSTAR
 
 // ==== класс для матрицы 8х32 адресных светодиодов ==
 
@@ -429,3 +434,107 @@ public:
     }
   }
 };
+
+// ==== инициализация матрицы ========================
+
+#if __ESPICHIPSET__
+void setESpiLedsData(CRGB *data, uint16_t leds_count)
+{
+#if defined CHIPSET_LPD6803
+  ESPIChipsets const chip = LPD6803;
+#elif defined CHIPSET_LPD8806
+  ESPIChipsets const chip = LPD8806;
+#elif defined CHIPSET_WS2801
+  ESPIChipsets const chip = WS2801;
+#elif defined CHIPSET_WS2803
+  ESPIChipsets const chip = WS2803;
+#elif defined CHIPSET_SM16716
+  ESPIChipsets const chip = SM16716;
+#elif defined CHIPSET_P9813
+  ESPIChipsets const chip = P9813;
+#elif defined CHIPSET_APA102
+  ESPIChipsets const chip = APA102;
+#elif defined CHIPSET_SK9822
+  ESPIChipsets const chip = SK9822;
+#elif defined CHIPSET_DOTSTAR
+  ESPIChipsets const chip = DOTSTAR;
+#endif
+
+#ifdef USE_HARDWARE_SPI
+  FastLED.addLeds<chip, EORDER>(data, leds_count);
+#else
+  FastLED.addLeds<chip, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, EORDER>(data, leds_count);
+#endif
+}
+#else
+
+void setLedsData(CRGB *data, uint16_t leds_count)
+{
+#if defined CHIPSET_NEOPIXEL
+  FastLED.addLeds<NEOPIXEL, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_SM16703
+  FastLED.addLeds<SM16703, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_TM1829
+  FastLED.addLeds<TM1829, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_TM1812
+  FastLED.addLeds<TM1812, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_TM1809
+  FastLED.addLeds<TM1809, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_TM1804
+  FastLED.addLeds<TM1804, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_TM1803
+  FastLED.addLeds<M1803, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_UCS1903
+  FastLED.addLeds<UCS1903, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_UCS1903B
+  FastLED.addLeds<UCS1903B, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_UCS1904
+  FastLED.addLeds<UCS1904, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_UCS2903
+  FastLED.addLeds<UCS2903, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_WS2812
+  FastLED.addLeds<WS2812, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_WS2852
+  FastLED.addLeds<WS2852, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_WS2812B
+  FastLED.addLeds<WS2812B, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_GS1903
+  FastLED.addLeds<GS1903, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_SK6812
+  FastLED.addLeds<SK6812, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_SK6822
+  FastLED.addLeds<SK6822, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_APA106
+  FastLED.addLeds<APA106, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_PL9823
+  FastLED.addLeds<PL9823, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_WS2811
+  FastLED.addLeds<WS2811, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_WS2813
+  FastLED.addLeds<WS2813, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_APA104
+  FastLED.addLeds<APA104, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_WS2811_400
+  FastLED.addLeds<WS2811_400, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_GE8822
+  FastLED.addLeds<GE8822, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_GW6205
+  FastLED.addLeds<GW6205, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_GW6205_400
+  FastLED.addLeds<GW6205_400, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_LPD1886
+  FastLED.addLeds<LPD1886, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#elif defined CHIPSET_LPD1886_8BIT
+  FastLED.addLeds<LPD1886_8BIT, DISPLAY_DIN_PIN, EORDER>(data, leds_count);
+#endif
+}
+#endif
+
+void setFastLEDData(CRGB *data, uint16_t leds_count)
+{
+  #if __ESPICHIPSET__
+  setESpiLedsData(data, leds_count);
+#else
+  setLedsData(data, leds_count);
+#endif
+}

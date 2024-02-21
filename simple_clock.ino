@@ -1024,33 +1024,7 @@ void setup()
 
 // ==== экраны =======================================
 #if defined(WS2812_MATRIX_DISPLAY)
-  // Раскомментируйте/отредактируйте одну из следующих строк для используемой вами матрицы
-  // FastLED.addLeds<TM1803, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<TM1804, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<TM1809, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<WS2811, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<WS2812, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  FastLED.addLeds<WS2812B, DISPLAY_DIN_PIN, GRB>(leds, 256);
-  // FastLED.addLeds<NEOPIXEL, DISPLAY_DIN_PIN>(leds, 256);
-  // FastLED.addLeds<APA104, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<UCS1903, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<UCS1903B, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<GW6205, DISPLAY_DIN_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<GW6205_400, DISPLAY_DIN_PIN, RGB>(leds, 256);
-
-  // FastLED.addLeds<WS2801, RGB>(leds, 256);
-  // FastLED.addLeds<SM16716, RGB>(leds, 256);
-  // FastLED.addLeds<LPD8806, RGB>(leds, 256);
-  // FastLED.addLeds<P9813, RGB>(leds, 256);
-  // FastLED.addLeds<APA102, RGB>(leds, 256);
-  // FastLED.addLeds<DOTSTAR, RGB>(leds, 256);
-
-  // FastLED.addLeds<WS2801, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<SM16716, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<LPD8806, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<P9813, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<APA102, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
-  // FastLED.addLeds<DOTSTAR, DISPLAY_DIN_PIN, DISPLAY_CLK_PIN, RGB>(leds, 256);
+  setFastLEDData(leds, 256);
 
 #elif defined(MAX72XX_MATRIX_DISPLAY) || defined(MAX72XX_7SEGMENT_DISPLAY)
   disp.shutdownAllDevices(false);
