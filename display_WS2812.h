@@ -39,13 +39,13 @@ class DisplayWS2812Matrix
 private:
   CRGB *leds = NULL;
   MatrixType matrix_type = BY_COLUMNS;
-  byte row_count = 8;
-  byte col_count = 32;
+  uint8_t row_count = 8;
+  uint8_t col_count = 32;
   CRGB color = CRGB::Red;
 
-  byte getLedIndexOfStrip(byte row, byte col)
+  uint8_t getLedIndexOfStrip(uint8_t row, uint8_t col)
   {
-    byte result = 0;
+    uint8_t result = 0;
     switch (matrix_type)
     {
     case BY_COLUMNS:
@@ -58,30 +58,30 @@ private:
     return (result);
   }
 
-  void setNumString(byte offset, byte num,
-                    byte width = 6, byte space = 1,
-                    byte *_data = NULL, byte _data_count = 0)
+  void setNumString(uint8_t offset, uint8_t num,
+                    uint8_t width = 6, uint8_t space = 1,
+                    uint8_t *_data = NULL, uint8_t _data_count = 0)
   {
     setChar(offset, num / 10, width, _data, _data_count);
     setChar(offset + width + space, num % 10, width, _data, _data_count);
   }
 
-  void setDayOfWeakString(byte offset, DateTime date, byte *_data = NULL, byte _data_count = 0)
+  void setDayOfWeakString(uint8_t offset, DateTime date, uint8_t *_data = NULL, uint8_t _data_count = 0)
   {
     uint8_t dow = getDayOfWeek(date.day(), date.month(), date.year());
-    for (byte j = 0; j < 3; j++)
+    for (uint8_t j = 0; j < 3; j++)
     {
       setChar(offset + j * 7,
               pgm_read_byte(&day_of_week[dow * 3 + j]), 5, _data, _data_count);
     }
   }
 
-  void setTempString(byte offset, int16_t temp, byte *_data = NULL, byte _data_count = 0)
+  void setTempString(uint8_t offset, int16_t temp, uint8_t *_data = NULL, uint8_t _data_count = 0)
   {
     // если температура выходит за диапазон, сформировать строку минусов
     if (temp > 99 || temp < -99)
     {
-      for (byte i = 0; i < 4; i++)
+      for (uint8_t i = 0; i < 4; i++)
       {
         setChar(offset + 2 + i * 7, 0x2D, 5, _data, _data_count);
       }
@@ -89,7 +89,7 @@ private:
     else
     {
       bool plus = temp > 0;
-      byte plus_pos = offset + 6;
+      uint8_t plus_pos = offset + 6;
       if (temp < 0)
       {
         temp = -temp;
@@ -114,21 +114,21 @@ private:
   }
 
 #ifdef USE_TICKER_FOR_DATE
-  byte getOffset(byte index)
+  uint8_t getOffset(uint8_t index)
   {
-    static const byte PROGMEM offset[] = {1, 48, 82, 167};
+    static const uint8_t PROGMEM offset[] = {1, 48, 82, 167};
 
     return ((index < 9) ? pgm_read_byte(&offset[index]) : 0);
   }
 
-  void getDateString(byte *_data, byte _data_count, DateTime date)
+  void getDateString(uint8_t *_data, uint8_t _data_count, DateTime date)
   {
-    for (byte i = 0; i < _data_count; i++)
+    for (uint8_t i = 0; i < _data_count; i++)
     {
       _data[i] = 0x00;
     }
 
-    byte offset = getOffset(0);
+    uint8_t offset = getOffset(0);
     // формирование строки времени
     setNumString(offset, date.hour(), 6, 1, _data, _data_count);
     _data[offset + 14] = 0x24; // двоеточие
@@ -155,12 +155,12 @@ private:
   }
 #endif
 
-  void setChar(byte offset, byte chr,
-               byte width = 6, byte *_arr = NULL, byte _arr_length = 0)
+  void setChar(uint8_t offset, uint8_t chr,
+               uint8_t width = 6, uint8_t *_arr = NULL, uint8_t _arr_length = 0)
   {
-    for (byte j = offset, i = 0; i < width; j++, i++)
+    for (uint8_t j = offset, i = 0; i < width; j++, i++)
     {
-      byte chr_data = 0;
+      uint8_t chr_data = 0;
       switch (width)
       {
       case 5:
@@ -212,11 +212,11 @@ public:
    * @param col столбец
    * @param _data байт для записи
    */
-  void setColumn(byte col, byte _data)
+  void setColumn(uint8_t col, uint8_t _data)
   {
     if (col < 32)
     {
-      for (byte i = 0; i < 8; i++)
+      for (uint8_t i = 0; i < 8; i++)
       {
         leds[getLedIndexOfStrip(i, col)] =
             (((_data) >> (7 - i)) & 0x01) ? color : CRGB::Black;
@@ -231,7 +231,7 @@ public:
    */
   void clear(bool upd = false)
   {
-    for (byte i = 0; i < 32; i++)
+    for (uint8_t i = 0; i < 32; i++)
     {
       setColumn(i, 0x00);
     }
@@ -248,7 +248,7 @@ public:
    * @param chr символ для записи
    * @param width ширина символа, может иметь значение 5 или 6, определяет, какой набор символов будет использован: 5х7 (для текста) или 6х8 (для вывода цифр)
    */
-  void setDispData(byte offset, byte chr, byte width = 6)
+  void setDispData(uint8_t offset, uint8_t chr, uint8_t width = 6)
   {
     if (offset < 32)
     {
@@ -302,9 +302,9 @@ public:
 
 #ifdef SHOW_SECOND_COLUMN
     // формирование секундного столбца
-    byte col_sec = 0;
-    byte x = second / 5;
-    for (byte i = 0; i < x; i++)
+    uint8_t col_sec = 0;
+    uint8_t x = second / 5;
+    for (uint8_t i = 0; i < x; i++)
     {
       if (i < 6)
       { // нарастание снизу вверх
@@ -341,7 +341,7 @@ public:
    */
   bool showDate(DateTime date, bool upd = false)
   {
-    static byte n = 0;
+    static uint8_t n = 0;
     bool result = false;
 
     if (upd)
@@ -357,11 +357,11 @@ public:
 
 // бегущая строка
 #ifdef USE_TICKER_FOR_DATE
-    byte str_len = 200;
-    byte date_str[str_len];
+    uint8_t str_len = 200;
+    uint8_t date_str[str_len];
     getDateString(date_str, str_len, date);
 
-    for (byte i = 32, j = n; i > 0 && j > 0; i--, j--)
+    for (uint8_t i = 32, j = n; i > 0 && j > 0; i--, j--)
     {
       setColumn(i, date_str[j - 1]);
     }
@@ -403,14 +403,14 @@ public:
    * @param toSensor используется или нет датчик освещенности
    * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
    */
-  void showBrightnessData(byte br, bool blink, bool toSensor = false, bool toMin = false)
+  void showBrightnessData(uint8_t br, bool blink, bool toSensor = false, bool toMin = false)
   {
     clear();
 
 #ifdef USE_RU_LANGUAGE
     setChar(0, 0xDF, 5); // Я
     setChar(6, 0xF0, 5); // р
-    byte x = 0xEA;       // к
+    uint8_t x = 0xEA;       // к
     if (toSensor)
     {
       x = (toMin) ? 0 + 0x30 : 1 + 0x30;
@@ -421,7 +421,7 @@ public:
     setChar(6, 0x72, 5); // r
     if (toSensor)
     {
-      byte x = (toMin) ? 0 : 1;
+      uint8_t x = (toMin) ? 0 : 1;
       x += 0x30;
       setChar(12, x, 5);
     }

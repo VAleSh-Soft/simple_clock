@@ -7,10 +7,10 @@
 
 // === используемые экраны (использовать только один))
 
-// #define TM1637_DISPLAY // использовать семисегментный экран на драйвере TM1637
+#define TM1637_DISPLAY // использовать семисегментный экран на драйвере TM1637
 // #define MAX72XX_7SEGMENT_DISPLAY // использовать семисегментный экран на драйвере MAX7219 или MAX7221, четыре цифры
 // #define MAX72XX_MATRIX_DISPLAY // использовать матричный экран на драйвере MAX7219 или MAX7221 и четырех матрицах 8х8 светодиодов
-#define WS2812_MATRIX_DISPLAY // использовать матричный экран 8х32 на базе адресных светодиодов
+// #define WS2812_MATRIX_DISPLAY // использовать матричный экран 8х32 на базе адресных светодиодов
 
 // ==== календарь ====================================
 
@@ -162,7 +162,7 @@ void setDisplay();
  * @param hour  часы
  * @param minute  минуты
  */
-void showTimeData(byte hour, byte minute);
+void showTimeData(uint8_t hour, uint8_t minute);
 
 #ifdef USE_ALARM
 /**
@@ -170,7 +170,7 @@ void showTimeData(byte hour, byte minute);
  *
  * @param _state состояние (включено/выключено)
  */
-void showAlarmState(byte _state);
+void showAlarmState(uint8_t _state);
 #endif
 
 // ==== разное =======================================
@@ -183,4 +183,4 @@ void showAlarmState(byte _state);
  * @param min минимально мозможное значение
  * @param toLoop если true, то изменение данных закольцовано, иначе только от минимума к максимуму и наоборот
  */
-void checkData(byte &dt, byte max, bool toUp, byte min = 0, bool toLoop = true);
+void checkData(uint8_t &dt, uint8_t max, bool toUp, uint8_t min = 0, bool toLoop = true);

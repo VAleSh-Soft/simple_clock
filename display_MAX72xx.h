@@ -13,12 +13,12 @@ template <uint8_t cs_pin>
 class DisplayMAX72xx7segment : public shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>
 {
 private:
-  byte data[4];
+  uint8_t data[4];
 
-  void setSegments(byte *data)
+  void setSegments(uint8_t *data)
   {
     shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::clearAllDevices();
-    for (byte i = 0; i < 4; i++)
+    for (uint8_t i = 0; i < 4; i++)
     {
       shMAX72xx7Segment<cs_pin, 1, NUM_DIGITS>::setChar(7 - i, data[i]);
     }
@@ -35,7 +35,7 @@ public:
    */
   void clear()
   {
-    for (byte i = 0; i < 4; i++)
+    for (uint8_t i = 0; i < 4; i++)
     {
       data[i] = 0x00;
     }
@@ -57,7 +57,7 @@ public:
    * @param _index индекс разряда (0..3)
    * @param _data данные для установки
    */
-  void setDispData(byte _index, byte _data)
+  void setDispData(uint8_t _index, uint8_t _data)
   {
     if (_index < 4)
     {
@@ -69,9 +69,9 @@ public:
    * @brief получение значения разряда _index буфера экрана
    *
    * @param _index индекс разряда (0..3)
-   * @return byte
+   * @return uint8_t
    */
-  byte getDispData(byte _index)
+  uint8_t getDispData(uint8_t _index)
   {
     return ((_index < 4) ? data[_index] : 0);
   }
@@ -83,8 +83,8 @@ public:
   void show()
   {
     bool flag = false;
-    static byte _data[4] = {0x00, 0x00, 0x00, 0x00};
-    for (byte i = 0; i < 4; i++)
+    static uint8_t _data[4] = {0x00, 0x00, 0x00, 0x00};
+    for (uint8_t i = 0; i < 4; i++)
     {
       flag = _data[i] != data[i];
       if (flag)
@@ -95,7 +95,7 @@ public:
     // отрисовка экрана происходит только если изменился хотя бы один разряд
     if (flag)
     {
-      for (byte i = 0; i < 4; i++)
+      for (uint8_t i = 0; i < 4; i++)
       {
         _data[i] = data[i];
       }
@@ -147,7 +147,7 @@ public:
     // если температура выходит за диапазон, сформировать строку минусов
     if (temp > 99)
     {
-      for (byte i = 0; i < 4; i++)
+      for (uint8_t i = 0; i < 4; i++)
       {
         data[i] = minusSegments;
       }
@@ -175,7 +175,7 @@ public:
    */
   bool showDate(DateTime date, bool upd = false)
   {
-    static byte n = 0;
+    static uint8_t n = 0;
     bool result = false;
 
     if (upd)
@@ -209,7 +209,7 @@ public:
    * @param toSensor используется или нет датчик освещенности
    * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
    */
-  void showBrightnessData(byte br, bool blink, bool toSensor = false, bool toMin = false)
+  void showBrightnessData(uint8_t br, bool blink, bool toSensor = false, bool toMin = false)
   {
     clear();
     data[0] = 0b00011111;
@@ -234,7 +234,7 @@ public:
    *
    * @param brightness значение яркости (1..7)
    */
-  void setBrightness(byte brightness)
+  void setBrightness(uint8_t brightness)
   {
     brightness = (brightness <= 15) ? brightness : 15;
     shMAX72xxMini<cs_pin, 1>::setBrightness(0, brightness);
@@ -247,30 +247,30 @@ template <uint8_t cs_pin>
 class DisplayMAX72xxMatrix : public shMAX72xxMini<cs_pin, 4>
 {
 private:
-  void setNumString(byte offset, byte num,
-                    byte width = 6, byte space = 1,
-                    byte *_data = NULL, byte _data_count = 0)
+  void setNumString(uint8_t offset, uint8_t num,
+                    uint8_t width = 6, uint8_t space = 1,
+                    uint8_t *_data = NULL, uint8_t _data_count = 0)
   {
     setChar(offset, num / 10, width, _data, _data_count);
     setChar(offset + width + space, num % 10, width, _data, _data_count);
   }
 
-  void setDayOfWeakString(byte offset, DateTime date, byte *_data = NULL, byte _data_count = 0)
+  void setDayOfWeakString(uint8_t offset, DateTime date, uint8_t *_data = NULL, uint8_t _data_count = 0)
   {
     uint8_t dow = getDayOfWeek(date.day(), date.month(), date.year());
-    for (byte j = 0; j < 3; j++)
+    for (uint8_t j = 0; j < 3; j++)
     {
       setChar(offset + j * 7,
               pgm_read_byte(&day_of_week[dow * 3 + j]), 5, _data, _data_count);
     }
   }
 
-  void setTempString(byte offset, int16_t temp, byte *_data = NULL, byte _data_count = 0)
+  void setTempString(uint8_t offset, int16_t temp, uint8_t *_data = NULL, uint8_t _data_count = 0)
   {
     // если температура выходит за диапазон, сформировать строку минусов
     if (temp > 99 || temp < -99)
     {
-      for (byte i = 0; i < 4; i++)
+      for (uint8_t i = 0; i < 4; i++)
       {
         setChar(offset + 2 + i * 7, 0x2D, 5, _data, _data_count);
       }
@@ -278,7 +278,7 @@ private:
     else
     {
       bool plus = temp > 0;
-      byte plus_pos = offset + 6;
+      uint8_t plus_pos = offset + 6;
       if (temp < 0)
       {
         temp = -temp;
@@ -303,21 +303,21 @@ private:
   }
 
 #ifdef USE_TICKER_FOR_DATE
-  byte getOffset(byte index)
+  uint8_t getOffset(uint8_t index)
   {
-    static const byte PROGMEM offset[] = {1, 48, 82, 167};
+    static const uint8_t PROGMEM offset[] = {1, 48, 82, 167};
 
     return ((index < 9) ? pgm_read_byte(&offset[index]) : 0);
   }
 
-  void getDateString(byte *_data, byte _data_count, DateTime date)
+  void getDateString(uint8_t *_data, uint8_t _data_count, DateTime date)
   {
-    for (byte i = 0; i < _data_count; i++)
+    for (uint8_t i = 0; i < _data_count; i++)
     {
       _data[i] = 0x00;
     }
 
-    byte offset = getOffset(0);
+    uint8_t offset = getOffset(0);
     // формирование строки времени
     setNumString(offset, date.hour(), 6, 1, _data, _data_count);
     _data[offset + 14] = 0x24; // двоеточие
@@ -344,12 +344,12 @@ private:
   }
 #endif
 
-  void setChar(byte offset, byte chr,
-               byte width = 6, byte *_arr = NULL, byte _arr_length = 0)
+  void setChar(uint8_t offset, uint8_t chr,
+               uint8_t width = 6, uint8_t *_arr = NULL, uint8_t _arr_length = 0)
   {
-    for (byte j = offset, i = 0; i < width; j++, i++)
+    for (uint8_t j = offset, i = 0; i < width; j++, i++)
     {
-      byte chr_data = 0;
+      uint8_t chr_data = 0;
       switch (width)
       {
       case 5:
@@ -399,7 +399,7 @@ public:
    * @param chr символ для записи
    * @param width ширина символа, может иметь значение 5 или 6, определяет, какой набор символов будет использован: 5х7 (для текста) или 6х8 (для вывода цифр)
    */
-  void setDispData(byte offset, byte chr, byte width = 6)
+  void setDispData(uint8_t offset, uint8_t chr, uint8_t width = 6)
   {
     setChar(offset, chr, width);
   }
@@ -451,9 +451,9 @@ public:
 
 #ifdef SHOW_SECOND_COLUMN
     // формирование секундного столбца
-    byte col_sec = 0;
-    byte x = second / 5;
-    for (byte i = 0; i < x; i++)
+    uint8_t col_sec = 0;
+    uint8_t x = second / 5;
+    for (uint8_t i = 0; i < x; i++)
     {
       if (i < 6)
       { // нарастание снизу вверх
@@ -490,7 +490,7 @@ public:
    */
   bool showDate(DateTime date, bool upd = false)
   {
-    static byte n = 0;
+    static uint8_t n = 0;
     bool result = false;
 
     if (upd)
@@ -506,11 +506,11 @@ public:
 
 // бегущая строка
 #ifdef USE_TICKER_FOR_DATE
-    byte str_len = 200;
-    byte date_str[str_len];
+    uint8_t str_len = 200;
+    uint8_t date_str[str_len];
     getDateString(date_str, str_len, date);
 
-    for (byte i = 32, j = n; i > 0 && j > 0; i--, j--)
+    for (uint8_t i = 32, j = n; i > 0 && j > 0; i--, j--)
     {
       shMAX72xxMini<cs_pin, 4>::setColumn((i - 1) / 8, (i - 1) % 8, date_str[j - 1]);
     }
@@ -552,14 +552,14 @@ public:
    * @param toSensor используется или нет датчик освещенности
    * @param toMin если true, то настраивается минимальный уровень яркости, иначе - максимальный
    */
-  void showBrightnessData(byte br, bool blink, bool toSensor = false, bool toMin = false)
+  void showBrightnessData(uint8_t br, bool blink, bool toSensor = false, bool toMin = false)
   {
     shMAX72xxMini<cs_pin, 4>::clearAllDevices();
 
 #ifdef USE_RU_LANGUAGE
     setChar(0, 0xDF, 5); // Я
     setChar(6, 0xF0, 5); // р
-    byte x = 0xEA;       // к
+    uint8_t x = 0xEA;       // к
     if (toSensor)
     {
       x = (toMin) ? 0 : 1;
@@ -571,7 +571,7 @@ public:
     setChar(6, 0x72, 5); // r
     if (toSensor)
     {
-      byte x = (toMin) ? 0 : 1;
+      uint8_t x = (toMin) ? 0 : 1;
       x += 0x30;
       setChar(12, x, 5);
     }
@@ -589,10 +589,10 @@ public:
    *
    * @param brightness значение яркости (0..15)
    */
-  void setBrightness(byte brightness)
+  void setBrightness(uint8_t brightness)
   {
     brightness = (brightness <= 15) ? brightness : 15;
-    for (byte i = 0; i < 4; i++)
+    for (uint8_t i = 0; i < 4; i++)
     {
       shMAX72xxMini<cs_pin, 4>::setBrightness(i, brightness);
     }

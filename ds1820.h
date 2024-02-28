@@ -21,10 +21,10 @@ class DS1820 : public OneWire
 {
 private:
   int16_t temp = ERROR_TEMP;
-  byte addr[8];
-  byte type_c = 10;
+  uint8_t addr[8];
+  uint8_t type_c = 10;
 
-  bool checkData(byte *data)
+  bool checkData(uint8_t *data)
   {
     // проверка данных на валидность - сначала по контрольной сумме;
     // в случае отсутствия датчика data[] заполняется нулями, поэтому
@@ -42,7 +42,7 @@ private:
   }
 
 public:
-  DS1820(byte data_pin) : OneWire(data_pin)
+  DS1820(uint8_t data_pin) : OneWire(data_pin)
   {
     OneWire::reset();
     // если датчик найден
@@ -80,12 +80,12 @@ public:
   {
     if (type_c < 2)
     {
-      byte data[9];
+      uint8_t data[9];
       // считывание данных из датчика
       OneWire::reset();
       OneWire::select(addr);
       OneWire::write(0xBE);
-      for (byte i = 0; i < 9; i++)
+      for (uint8_t i = 0; i < 9; i++)
       {
         data[i] = OneWire::read();
       }
@@ -110,7 +110,7 @@ public:
         else
         // для датчиков DS18b20 и DS1822
         {
-          byte cfg = (data[4] & 0x60);
+          uint8_t cfg = (data[4] & 0x60);
           // при более низком разрешении младшие биты не определены, поэтому обнуляем их
           if (cfg == 0x00)
             raw = raw & ~7; // разрешение 9 бит, 93.75 ms

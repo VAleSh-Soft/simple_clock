@@ -22,7 +22,7 @@ enum AlarmState : uint8_t // состояние будильника
 class Alarm
 {
 private:
-  byte led_pin;
+  uint8_t led_pin;
   uint16_t eeprom_index;
   AlarmState state;
 
@@ -50,8 +50,8 @@ private:
 
   void setLed()
   {
-    static byte n = 0;
-    byte led_state = LOW;
+    static uint8_t n = 0;
+    uint8_t led_state = LOW;
     switch (state)
     {
     case ALARM_ON: // при включенном будильнике светодиод горит
@@ -72,7 +72,7 @@ private:
   }
 
 public:
-  Alarm(byte _led_pin, uint16_t _eeprom_index)
+  Alarm(uint8_t _led_pin, uint16_t _eeprom_index)
   {
     led_pin = _led_pin;
     pinMode(led_pin, OUTPUT);
@@ -117,7 +117,7 @@ public:
    */
   void setOnOffAlarm(bool _state)
   {
-    write_eeprom_8(ALARM_STATE, (byte)_state);
+    write_eeprom_8(ALARM_STATE, (uint8_t)_state);
     state = (AlarmState)_state;
   }
 

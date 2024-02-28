@@ -103,7 +103,7 @@ private:
   ButtonFlag _flag = BTN_FLAG_NONE;
 
 public:
-  clcButton(byte button_pin) : shButton(button_pin)
+  clcButton(uint8_t button_pin) : shButton(button_pin)
   {
     shButton::setTimeoutOfLongClick(1000);
     shButton::setLongClickMode(LCM_ONLYONCE);
@@ -120,9 +120,9 @@ public:
     _flag = flag;
   }
 
-  byte getButtonState()
+  uint8_t getButtonState()
   {
-    byte _state = shButton::getButtonState();
+    uint8_t _state = shButton::getButtonState();
     switch (_state)
     {
     case BTN_DOWN:
@@ -359,7 +359,7 @@ void rtcNow()
 
 void blink()
 {
-  static byte cur_sec = curTime.second();
+  static uint8_t cur_sec = curTime.second();
   static uint32_t tmr = 0;
   if (cur_sec != curTime.second())
   {
@@ -424,10 +424,10 @@ void stopSetting(shHandle task)
 void showTimeSetting()
 {
   static bool time_checked = false;
-  static byte curHour = 0;
-  static byte curMinute = 0;
+  static uint8_t curHour = 0;
+  static uint8_t curMinute = 0;
 #ifdef USE_CALENDAR
-  static const byte PROGMEM days_of_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+  static const uint8_t PROGMEM days_of_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
 #endif
 
   if (!tasks.getTaskState(set_time_mode))
@@ -443,7 +443,7 @@ void showTimeSetting()
       curMinute = alarm.getAlarmPoint() % 60;
       break;
     case DISPLAY_MODE_ALARM_ON_OFF:
-      curHour = (byte)alarm.getOnOffAlarm();
+      curHour = (uint8_t)alarm.getOnOffAlarm();
       break;
 #endif
     default:
@@ -528,7 +528,7 @@ void showTimeSetting()
 #ifdef USE_ALARM
       case DISPLAY_MODE_SET_ALARM_HOUR:
 #endif
-        displayMode = DisplayMode(byte(displayMode + 1));
+        displayMode = DisplayMode(uint8_t(displayMode + 1));
         stopSetting(set_time_mode);
         break;
 #ifdef USE_ALARM
@@ -575,7 +575,7 @@ void showTimeSetting()
 #endif
 #ifdef USE_CALENDAR
     case DISPLAY_MODE_SET_DAY:
-      byte i;
+      uint8_t i;
       i = pgm_read_byte(&days_of_month[curMinute - 1]);
       if (curMinute == 2 && (curTime.year() % 4 == 0))
       {
@@ -668,9 +668,9 @@ void checkAlarm()
 
 void runAlarmBuzzer()
 {
-  static byte n = 0;
-  static byte k = 0;
-  static byte m = 0;
+  static uint8_t n = 0;
+  static uint8_t k = 0;
+  static uint8_t m = 0;
   // "мелодия" пищалки: первая строка - частота, вторая строка - длительность
   static const PROGMEM uint32_t pick[2][8] = {
       {2000, 0, 2000, 0, 2000, 0, 2000, 0},
@@ -724,7 +724,7 @@ void setBrightness()
 
   static uint16_t b;
   b = (b * 2 + analogRead(LIGHT_SENSOR_PIN)) / 3;
-  byte x = 1;
+  uint8_t x = 1;
   if (b < LIGHT_THRESHOLD)
   {
     x = EEPROM.read(MIN_BRIGHTNESS_VALUE);
@@ -744,7 +744,7 @@ void setBrightness()
 #ifdef USE_SET_BRIGHTNESS_MODE
 void showBrightnessSetting()
 {
-  static byte x = 0;
+  static uint8_t x = 0;
 
   if (!tasks.getTaskState(set_brightness_mode))
   {
@@ -819,7 +819,7 @@ void showBrightnessSetting()
 #endif
 
 // ===================================================
-void showTimeData(byte hour, byte minute)
+void showTimeData(uint8_t hour, uint8_t minute)
 {
   // если наступило время блинка и кнопки Up/Down не нажаты, то стереть соответствующие разряды; при нажатых кнопках Up/Down во время изменения данных ничего не мигает
   if (!blink_flag && !btnUp.isButtonClosed() && !btnDown.isButtonClosed())
@@ -864,7 +864,7 @@ void showTimeData(byte hour, byte minute)
 }
 
 #ifdef USE_ALARM
-void showAlarmState(byte _state)
+void showAlarmState(uint8_t _state)
 {
 #if defined(TM1637_DISPLAY)
   disp.setDispData(0, 0b01110111); // "A"
@@ -912,7 +912,7 @@ void showAlarmState(byte _state)
 #endif
 
 // ===================================================
-void checkData(byte &dt, byte max, bool toUp, byte min, bool toLoop)
+void checkData(uint8_t &dt, uint8_t max, bool toUp, uint8_t min, bool toLoop)
 {
   (toUp) ? dt++ : dt--;
   if ((dt > max) || (min > 0 && dt < min))
@@ -1001,7 +1001,7 @@ void setup()
   temp_sensor.setADCbitDepth(10); // установить разрядность АЦП вашего МК, для AVR обычно равна 10 бит
 #endif
   // проверить корректность заданных уровней яркости
-  byte x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
+  uint8_t x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
 #if defined(MAX72XX_7SEGMENT_DISPLAY) || defined(MAX72XX_MATRIX_DISPLAY)
   x = (x > 15) ? 8 : x;
 #elif defined(WS2812_MATRIX_DISPLAY)
@@ -1044,7 +1044,7 @@ void setup()
 #endif
 
   // ==== задачи =====================================
-  byte task_count = 5; // базовое количество задач
+  uint8_t task_count = 5; // базовое количество задач
 #ifdef USE_LIGHT_SENSOR
   task_count++;
 #endif
