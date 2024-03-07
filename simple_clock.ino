@@ -733,11 +733,7 @@ void setBrightness()
   {
     x = EEPROM.read(MAX_BRIGHTNESS_VALUE);
   }
-#if defined(WS2812_MATRIX_DISPLAY)
-  FastLED.setBrightness(x * 10);
-#else
   disp.setBrightness(x);
-#endif
 }
 #endif
 
